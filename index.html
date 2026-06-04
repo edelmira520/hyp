@@ -937,6 +937,20 @@
         };
       }
 
+      // GCR (Gray Component Replacement / 灰成分替换)
+      // 把 CMY 三色共有的"灰"部分挤到 K 通道，避免浅色区域出现彩色雪花。
+      // amount: 0 = 不替换（保持原 CMYK），1 = 完全替换（共有灰全进 K）。
+      function applyGCR(cmyk, amount = 0.7) {
+        const gray = Math.min(cmyk.c, cmyk.m, cmyk.y);
+        const removed = gray * amount;
+        return {
+          c: cmyk.c - removed,
+          m: cmyk.m - removed,
+          y: cmyk.y - removed,
+          k: clamp(cmyk.k + removed, 0, 1),
+        };
+      }
+
       function getCmykAt(pixels, width, height, x, y, detail) {
         const px = Math.min(width - 1, Math.max(0, Math.floor(x)));
         const py = Math.min(height - 1, Math.max(0, Math.floor(y)));
@@ -945,15 +959,23 @@
         const r = pixels[index];
         const g = pixels[index + 1];
         const b = pixels[index + 2];
-        const cmyk = rgbToCmyk(r, g, b);
+        const rawCmyk = rgbToCmyk(r, g, b);
+        // 先做 GCR：把 C/M/Y 共有的灰挤到 K，浅色区域更干净，深色区域更稳。
+        const cmyk = applyGCR(rawCmyk, 0.7);
         const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
         const keyBoost = Math.pow(1 - luma, 1.55) * alpha;
         const detailPower = 1.55 - Number(detail) / 120;
 
+        // 深色细节走纯黑：当像素本身就很暗（K 高 / luma 低）时，
+        // 削弱 C/M/Y 三色，避免电线等纯黑细节出现彩色错位边。
+        // suppression: K 越高，CMY 衰减越多，K=0.7 时 CMY 已经基本消失。
+        const darkness = Math.max(cmyk.k, 1 - luma);
+        const cmySuppress = darkness > 0.55 ? Math.max(0, 1 - (darkness - 0.55) / 0.3) : 1;
+
         return {
-          c: Math.pow(cmyk.c * alpha, detailPower),
-          m: Math.pow(cmyk.m * alpha, detailPower),
-          y: Math.pow(cmyk.y * alpha, detailPower),
+          c: Math.pow(cmyk.c * alpha, detailPower) * cmySuppress,
+          m: Math.pow(cmyk.m * alpha, detailPower) * cmySuppress,
+          y: Math.pow(cmyk.y * alpha, detailPower) * cmySuppress,
           k: clamp(Math.pow(cmyk.k * alpha, detailPower) + keyBoost * 0.55, 0, 1),
         };
       }
