@@ -224,6 +224,14 @@
         white-space: nowrap;
       }
 
+      .preview-meta {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
       .canvas-stage {
         position: relative;
         display: flex;
@@ -281,27 +289,9 @@
         max-width: 100%;
         max-height: 100%;
         flex-shrink: 1;
-        background: #fff;
+        background: transparent;
         box-shadow: 0 18px 46px rgb(0 0 0 / 38%);
         object-fit: contain;
-      }
-
-      .canvas-hud {
-        position: absolute;
-        right: 46px;
-        bottom: 36px;
-        left: 46px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        border: 1px solid rgb(255 255 255 / 8%);
-        border-radius: 10px;
-        padding: 10px 12px;
-        background: rgb(18 20 24 / 76%);
-        color: var(--muted);
-        font-size: 11px;
-        backdrop-filter: blur(10px);
       }
 
       .empty-state {
@@ -360,6 +350,27 @@
       .footerbar small {
         color: var(--muted-2);
         font-size: 11px;
+      }
+
+      .export-actions {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .export-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .export-toggle input {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--accent);
       }
 
       /* =========================================================
@@ -441,7 +452,7 @@
       }
 
       select,
-      input[type="color"] {
+      .color-hex-input {
         width: 100%;
         border: 1px solid var(--line);
         border-radius: 7px;
@@ -458,14 +469,62 @@
       }
 
       select:focus,
-      input[type="color"]:focus {
+      .color-hex-input:focus {
         border-color: #708e32;
       }
 
-      input[type="color"] {
+      .color-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .color-field {
+        display: grid;
+        gap: 8px;
+      }
+
+      .color-field-label {
+        color: #cbd0d8;
+        font-size: 11px;
+      }
+
+      .color-input-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 42px;
+        gap: 8px;
+      }
+
+      .color-hex-input {
         height: 36px;
-        cursor: pointer;
+        padding: 0 10px;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .color-swatch-button {
+        width: 42px;
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
         padding: 4px;
+        background: var(--panel-2);
+      }
+
+      .color-swatch {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 1px solid rgb(255 255 255 / 28%);
+        border-radius: 6px;
+      }
+
+      .native-color-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        opacity: 0;
+        pointer-events: none;
       }
 
       input[type="range"] {
@@ -743,15 +802,15 @@
         <section class="preview-area" aria-label="图片预览">
           <div class="preview-toolbar">
             <span>画布预览</span>
-            <small id="previewInfo">适应窗口</small>
+            <div class="preview-meta">
+              <small id="mediaMode">静态图像</small>
+              <small id="canvasSize">等待文件</small>
+              <small id="previewInfo">适应窗口</small>
+            </div>
           </div>
 
           <div class="canvas-stage" id="canvasStage">
             <canvas id="previewCanvas"></canvas>
-            <div class="canvas-hud">
-              <span id="mediaMode">静态图像</span>
-              <span id="canvasSize">等待文件</span>
-            </div>
             <div class="empty-state" id="emptyState">
               <div class="empty-icon" aria-hidden="true">
                 <span></span>
@@ -778,9 +837,15 @@
 
       <footer class="footerbar">
         <small id="exportHint">导出会使用当前网屏参数和当前预览帧。</small>
-        <button class="button button-primary" id="exportButton" type="button" disabled>
-          导出高清 PNG
-        </button>
+        <div class="export-actions">
+          <label class="export-toggle">
+            <input id="transparentExport" type="checkbox" />
+            <span>透明背景</span>
+          </label>
+          <button class="button button-primary" id="exportButton" type="button" disabled>
+            导出高清 PNG
+          </button>
+        </div>
       </footer>
     </div>
 
@@ -816,8 +881,9 @@
       const halftoneEffect = {
         id: "halftone",
         name: "半调 Halftone",
-        description: "将图像拆成 CMYK 油墨网屏，模拟丝网印刷、套印错位和油墨颗粒质感。",
+        description: "将图像转换为印刷网屏，可使用 CMYK 分色或单色油墨模拟丝网印刷质感。",
         defaultParams: {
+          colorMode: "cmyk",
           pattern: "dot",
           screenDensity: 62,
           screenAngle: 45,
@@ -841,7 +907,8 @@
           magentaOffset: -1.1,
           yellowOffset: 0.7,
           blackOffset: 0.25,
-          backgroundColor: "#f3ead8",
+          inkColor: "#b84348",
+          backgroundColor: "#ffffff",
         },
         controls: [
           {
@@ -858,34 +925,62 @@
             ],
             panel: "left",
           },
+          {
+            id: "colorMode",
+            label: "Color Mode 色彩模式",
+            type: "select",
+            options: [
+              { value: "cmyk", label: "CMYK Process 四色印刷" },
+              { value: "single", label: "Single Ink 单色油墨" },
+            ],
+            group: "Ink 油墨控制",
+          },
           { id: "screenDensity", label: "Screen Density 网点密度", type: "range", min: 0, max: 100, step: 1, group: "Screen 网屏控制" },
           { id: "screenAngle", label: "Screen Angle 网点角度", type: "range", min: -90, max: 90, step: 1, group: "Screen 网屏控制" },
           { id: "dotCoverage", label: "Dot Coverage 网点覆盖率", type: "range", min: 0.05, max: 1.4, step: 0.01, group: "Screen 网屏控制" },
           { id: "detail", label: "Detail 细节保留", type: "range", min: 5, max: 100, step: 1, group: "Screen 网屏控制" },
+          {
+            id: "singleInkColors",
+            label: "Colors 颜色",
+            type: "colorPair",
+            group: "Ink 油墨控制",
+            colors: [
+              { id: "inkColor", label: "前景" },
+              { id: "backgroundColor", label: "背景" },
+            ],
+            showWhen: { id: "colorMode", value: "single" },
+          },
           { id: "inkStrength", label: "Ink Strength 油墨强度", type: "range", min: 10, max: 140, step: 1, group: "Ink 油墨控制" },
-          { id: "blackKeyStrength", label: "Black Key Strength 黑版强度", type: "range", min: 40, max: 180, step: 1, group: "Ink 油墨控制" },
+          { id: "blackKeyStrength", label: "Black Key Strength 黑版强度", type: "range", min: 40, max: 180, step: 1, group: "Ink 油墨控制", showWhen: { id: "colorMode", value: "cmyk" } },
           { id: "inkSpread", label: "Ink Spread 油墨扩散", type: "range", min: 0, max: 1, step: 0.01, group: "Ink 油墨控制" },
           { id: "inkBleed", label: "Ink Bleed 油墨晕染", type: "range", min: 0, max: 90, step: 1, group: "Ink 油墨控制" },
           { id: "inkRoughness", label: "Ink Roughness 边缘粗糙", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
           { id: "inkGrain", label: "Ink Grain 油墨颗粒", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
-          { id: "cmykShift", label: "CMYK Shift 油墨偏色", hint: "分离青、品红、黄、黑四个油墨通道", type: "checkbox", group: "Color Shift 偏色控制" },
-          { id: "registrationOffset", label: "Registration Offset 套印错位", type: "range", min: 0, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "cyanOffset", label: "Cyan Offset 青版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "backgroundColor", label: "Background Color 背景颜色", type: "color", group: "Background 背景" },
+          { id: "cmykShift", label: "CMYK Shift 油墨偏色", hint: "分离青、品红、黄、黑四个油墨通道", type: "checkbox", group: "Color Shift 偏色控制", showWhen: { id: "colorMode", value: "cmyk" } },
+          { id: "registrationOffset", label: "Registration Offset 套印错位", type: "range", min: 0, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "cyanOffset", label: "Cyan Offset 青版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "backgroundColor", label: "Background Color 背景颜色", type: "color", group: "Background 背景", showWhen: { id: "colorMode", value: "cmyk" } },
         ],
-        render(ctx, image, params, canvas) {
+        render(ctx, image, params, canvas, options = {}) {
           const width = canvas.width;
           const height = canvas.height;
           resizeCanvasIfNeeded(renderSampleCanvas, width, height);
           renderSampleCtx.drawImage(image, 0, 0, width, height);
           const pixels = renderSampleCtx.getImageData(0, 0, width, height).data;
 
-          ctx.fillStyle = params.backgroundColor;
-          ctx.fillRect(0, 0, width, height);
-          drawCmykScreen(ctx, pixels, width, height, params);
+          ctx.clearRect(0, 0, width, height);
+          if (!options.transparentBackground) {
+            ctx.fillStyle = params.backgroundColor;
+            ctx.fillRect(0, 0, width, height);
+          }
+          if (params.colorMode === "single") {
+            drawSingleInkScreen(ctx, pixels, width, height, params);
+          } else {
+            drawCmykScreen(ctx, pixels, width, height, params);
+          }
         },
       };
 
@@ -955,12 +1050,39 @@
         };
       }
 
-      function drawCmykScreen(ctx, pixels, width, height, params) {
+      function getSingleInkAt(pixels, width, height, x, y, detail) {
+        const px = Math.min(width - 1, Math.max(0, Math.floor(x)));
+        const py = Math.min(height - 1, Math.max(0, Math.floor(y)));
+        const index = (py * width + px) * 4;
+        const alpha = pixels[index + 3] / 255;
+        const r = pixels[index];
+        const g = pixels[index + 1];
+        const b = pixels[index + 2];
+        const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const detailPower = 1.55 - Number(detail) / 120;
+        return Math.pow((1 - luma) * alpha, detailPower);
+      }
+
+      function getInkAmountAt(pixels, width, height, x, y, params, channel) {
+        if (channel.key === "ink") {
+          return getSingleInkAt(pixels, width, height, x, y, params.detail);
+        }
+        return getCmykAt(pixels, width, height, x, y, params.detail)[channel.key];
+      }
+
+      function getScreenMetrics(params) {
         const densityRatio = Number(params.screenDensity) / 100;
         const cellSize = 48 - densityRatio * 45.5;
         const dotCoverage = clamp(Number(params.dotCoverage), 0.05, 1.4);
-        const maxDotSize = cellSize * dotCoverage;
-        const overflowLimit = cellSize * (1 + clamp(Number(params.inkSpread), 0, 1) * 0.6);
+        return {
+          cellSize,
+          maxDotSize: cellSize * dotCoverage,
+          overflowLimit: cellSize * (1 + clamp(Number(params.inkSpread), 0, 1) * 0.6),
+        };
+      }
+
+      function drawCmykScreen(ctx, pixels, width, height, params) {
+        const { cellSize, maxDotSize, overflowLimit } = getScreenMetrics(params);
         const shift = params.cmykShift ? Number(params.registrationOffset) : 0;
         const baseAngles = params.advancedAngles || { cyan: 15, magenta: 75, yellow: 0, black: 45 };
         const screenAngleOffset = Number(params.screenAngle ?? 45) - 45;
@@ -982,6 +1104,26 @@
             seed: index + 1,
           });
         });
+        ctx.restore();
+      }
+
+      function drawSingleInkScreen(ctx, pixels, width, height, params) {
+        const { cellSize, maxDotSize, overflowLimit } = getScreenMetrics(params);
+        const channel = {
+          key: "ink",
+          color: params.inkColor,
+          angle: Number(params.screenAngle ?? 45),
+          offset: 0,
+          strength: 1,
+          cellSize,
+          maxDotSize,
+          overflowLimit,
+          seed: 1,
+        };
+
+        ctx.save();
+        ctx.globalCompositeOperation = "multiply";
+        drawInkChannel(ctx, pixels, width, height, params, channel);
         ctx.restore();
       }
 
@@ -1007,13 +1149,27 @@
         ctx.fillStyle = channel.color;
         ctx.strokeStyle = channel.color;
 
+        if (params.pattern === "line") {
+          drawLineChannel(ctx, pixels, width, height, params, channel, {
+            radians,
+            cos,
+            sin,
+            centerX,
+            centerY,
+            extent,
+            roughness,
+            grain,
+            density,
+          });
+          return;
+        }
+
         for (let gy = -extent / 2; gy < extent / 2; gy += channel.cellSize) {
           for (let gx = -extent / 2; gx < extent / 2; gx += channel.cellSize) {
             const { x, y } = gridToCanvas(gx, gy, centerX, centerY, cos, sin, channel);
             if (x < -channel.cellSize || x >= width + channel.cellSize || y < -channel.cellSize || y >= height + channel.cellSize) continue;
 
-            const cmyk = getCmykAt(pixels, width, height, x, y, params.detail);
-            const inkAmount = cmyk[channel.key];
+            const inkAmount = getInkAmountAt(pixels, width, height, x, y, params, channel);
             const grainLoss = 1 - grain * hashNoise(gx, gy, channel.seed + 20) * 0.45;
             const keyScale = channel.key === "k" ? 1.18 : 1;
             const channelAmount = Math.sqrt(inkAmount);
@@ -1034,14 +1190,66 @@
         ctx.globalAlpha = 1;
       }
 
+      function drawLineChannel(ctx, pixels, width, height, params, channel, geometry) {
+        const { cos, sin, centerX, centerY, extent, roughness, grain, density } = geometry;
+        const sampleStep = Math.max(3, channel.cellSize * 0.46);
+        const rowStep = channel.cellSize;
+        const keyScale = channel.key === "k" ? 1.12 : 1;
+        const linePadding = channel.cellSize * 2;
+
+        for (let gy = -extent / 2; gy < extent / 2; gy += rowStep) {
+          const upperEdge = [];
+          const lowerEdge = [];
+          let strongestInk = 0;
+
+          for (let gx = -extent / 2 - linePadding; gx <= extent / 2 + linePadding; gx += sampleStep) {
+            const { x, y } = gridToCanvas(gx, gy, centerX, centerY, cos, sin, channel);
+            const inkAmount = getInkAmountAt(pixels, width, height, x, y, params, channel);
+            const grainLoss = 1 - grain * hashNoise(gx, gy, channel.seed + 20) * 0.32;
+            const rawThickness = Math.sqrt(inkAmount) * channel.maxDotSize * grainLoss * keyScale;
+            const thickness = Math.min(rawThickness, rowStep * 0.92);
+            strongestInk = Math.max(strongestInk, inkAmount);
+
+            const wobble = (hashNoise(gx, gy, channel.seed + 70) - 0.5) * roughness * rowStep * 0.12;
+            const half = Math.max(0, thickness / 2 + wobble);
+            const edgeX = centerX + gx * cos - (gy - half) * sin + channel.offset;
+            const edgeY = centerY + gx * sin + (gy - half) * cos - channel.offset * 0.65;
+            const lowerX = centerX + gx * cos - (gy + half) * sin + channel.offset;
+            const lowerY = centerY + gx * sin + (gy + half) * cos - channel.offset * 0.65;
+
+            upperEdge.push({ x: edgeX, y: edgeY, thickness });
+            lowerEdge.push({ x: lowerX, y: lowerY, thickness });
+          }
+
+          if (strongestInk <= 0.01) continue;
+
+          const alpha = clamp(strongestInk * density * (0.76 + hashNoise(gy, strongestInk, channel.seed + 30) * 0.18), 0, 0.88);
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+
+          let hasInk = false;
+          upperEdge.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+            if (point.thickness >= 0.2) hasInk = true;
+          });
+
+          for (let index = lowerEdge.length - 1; index >= 0; index--) {
+            const point = lowerEdge[index];
+            ctx.lineTo(point.x, point.y);
+          }
+
+          if (hasInk) {
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
       function drawRoughPattern(ctx, pattern, size, spacing, roughness, grain, gx, gy, seed) {
         const hole = hashNoise(gx, gy, seed + 50) < grain * 0.18;
         if (hole) return;
-
-        if (pattern === "line") {
-          roughRect(ctx, -spacing * 0.58, -size / 2, spacing * 1.16, size, roughness, gx, gy, seed);
-          return;
-        }
 
         if (pattern === "cross") {
           const arm = Math.min(spacing, Math.max(size, spacing * 0.34));
@@ -1131,6 +1339,7 @@
         canvasSize: document.querySelector("#canvasSize"),
         exportButton: document.querySelector("#exportButton"),
         exportHint: document.querySelector("#exportHint"),
+        transparentExport: document.querySelector("#transparentExport"),
       };
 
       const sourceCanvas = document.createElement("canvas");
@@ -1244,12 +1453,25 @@
 
       function shouldShowControl(control, params) {
         if (!control.showWhen) return true;
-        return params[control.showWhen.id] === control.showWhen.value;
+        const conditions = Array.isArray(control.showWhen) ? control.showWhen : [control.showWhen];
+        return conditions.every((condition) => params[condition.id] === condition.value);
+      }
+
+      function normalizeHexColor(value) {
+        const text = String(value || "").trim();
+        const match = text.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+        if (!match) return "";
+        const hex = match[1];
+        if (hex.length === 3) {
+          return `#${hex.split("").map((char) => char + char).join("")}`.toUpperCase();
+        }
+        return `#${hex}`.toUpperCase();
       }
 
       function createControl(control, params, effect) {
         if (control.type === "checkbox") return createCheckboxControl(control, params);
         if (control.type === "scale") return createScaleControl(control, params, effect);
+        if (control.type === "colorPair") return createColorPairControl(control, params);
 
         const label = document.createElement("label");
         label.className = "control";
@@ -1288,9 +1510,6 @@
           select.value = params[control.id];
           select.addEventListener("input", () => {
             params[control.id] = select.value;
-            if (control.id === "colorMode") {
-              params.useImageColor = select.value === "image";
-            }
             renderEffectUI();
             scheduleRender();
           });
@@ -1299,17 +1518,82 @@
 
         if (control.type === "color") {
           label.append(header);
-          const input = document.createElement("input");
-          input.type = "color";
-          input.value = params[control.id];
-          input.addEventListener("input", () => {
-            params[control.id] = input.value;
-            scheduleRender();
-          });
-          label.append(input);
+          label.append(createColorField({ id: control.id, label: "" }, params));
         }
 
         return label;
+      }
+
+      function createColorPairControl(control, params) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "control";
+        wrapper.innerHTML = `<span class="control-header"><span>${control.label}</span></span>`;
+
+        const pair = document.createElement("div");
+        pair.className = "color-pair";
+        control.colors.forEach((color) => pair.append(createColorField(color, params)));
+        wrapper.append(pair);
+        return wrapper;
+      }
+
+      function createColorField(color, params) {
+        const field = document.createElement("label");
+        field.className = "color-field";
+
+        if (color.label) {
+          const label = document.createElement("span");
+          label.className = "color-field-label";
+          label.textContent = color.label;
+          field.append(label);
+        }
+
+        const row = document.createElement("span");
+        row.className = "color-input-row";
+
+        const hexInput = document.createElement("input");
+        hexInput.className = "color-hex-input";
+        hexInput.type = "text";
+        hexInput.inputMode = "text";
+        hexInput.spellcheck = false;
+        hexInput.value = normalizeHexColor(params[color.id]) || "#000000";
+
+        const swatchButton = document.createElement("button");
+        swatchButton.className = "color-swatch-button";
+        swatchButton.type = "button";
+
+        const swatch = document.createElement("span");
+        swatch.className = "color-swatch";
+        swatch.style.background = hexInput.value;
+
+        const nativeInput = document.createElement("input");
+        nativeInput.className = "native-color-input";
+        nativeInput.type = "color";
+        nativeInput.value = hexInput.value;
+
+        const commitColor = (value) => {
+          const normalized = normalizeHexColor(value);
+          if (!normalized) return false;
+          params[color.id] = normalized;
+          hexInput.value = normalized;
+          nativeInput.value = normalized;
+          swatch.style.background = normalized;
+          scheduleRender();
+          return true;
+        };
+
+        hexInput.addEventListener("change", () => {
+          if (!commitColor(hexInput.value)) hexInput.value = normalizeHexColor(params[color.id]) || "#000000";
+        });
+        hexInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") hexInput.blur();
+        });
+        swatchButton.addEventListener("click", () => nativeInput.click());
+        nativeInput.addEventListener("input", () => commitColor(nativeInput.value));
+
+        swatchButton.append(swatch);
+        row.append(hexInput, swatchButton, nativeInput);
+        field.append(row);
+        return field;
       }
 
       function createScaleControl(control, params, effect) {
@@ -1352,9 +1636,6 @@
         const input = label.querySelector("input");
         input.addEventListener("input", () => {
           params[control.id] = input.checked;
-          if (control.id === "useImageColor") {
-            params.colorMode = input.checked ? "image" : "custom";
-          }
           renderEffectUI();
           scheduleRender();
         });
@@ -1522,7 +1803,9 @@
         const previewSize = getPreviewDimensions();
         resizeCanvasIfNeeded(dom.canvas, previewSize.width, previewSize.height);
         dom.previewInfo.textContent = `${sourceCanvas.width} × ${sourceCanvas.height}px · 预览 ${previewSize.width} × ${previewSize.height}px`;
-        effect.render(previewCtx, state.sourceImage, params, dom.canvas);
+        effect.render(previewCtx, state.sourceImage, params, dom.canvas, {
+          transparentBackground: dom.transparentExport.checked,
+        });
       }
 
       function exportPng() {
@@ -1537,7 +1820,9 @@
 
         exportCanvas.width = Math.round(sourceCanvas.width * scale);
         exportCanvas.height = Math.round(sourceCanvas.height * scale);
-        effect.render(exportCtx, state.sourceImage, params, exportCanvas);
+        effect.render(exportCtx, state.sourceImage, params, exportCanvas, {
+          transparentBackground: dom.transparentExport.checked,
+        });
 
         dom.exportButton.disabled = true;
         dom.exportButton.textContent = "正在导出...";
@@ -1591,6 +1876,7 @@
       document.addEventListener("drop", preventDefaultDrag);
 
       dom.exportButton.addEventListener("click", exportPng);
+      dom.transparentExport.addEventListener("change", scheduleRender);
 
       initEffectSelect();
       renderEffectUI();
