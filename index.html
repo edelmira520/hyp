@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dot Studio - 生成艺术效果编辑器</title>
+    <style>
+      /* =========================================================
+         01. Design Tokens
+      ========================================================= */
+      :root {
+        color-scheme: dark;
+        --bg: #111214;
+        --panel: #1a1c20;
+        --panel-2: #202329;
+        --panel-3: #262a31;
+        --line: #30343c;
+        --line-soft: #282c33;
+        --text: #f4f6f8;
+        --muted: #9aa1ad;
+        --muted-2: #6d7480;
+        --accent: #f05a8a;
+        --accent-2: #ff7eaa;
+        --accent-text: #fff8fb;
+        --danger: #ff7b7b;
+        --canvas-bg: #0f1012;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% -12%, rgb(240 90 138 / 13%), transparent 34%),
+          radial-gradient(circle at 0 85%, rgb(200 255 75 / 6%), transparent 26%),
+          var(--bg);
+        color: var(--text);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      /* =========================================================
+         02. App Layout
+      ========================================================= */
+      .app-shell {
+        display: grid;
+        height: 100vh;
+        grid-template-rows: 72px minmax(0, 1fr) 58px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 0 22px;
+        border-bottom: 1px solid var(--line);
+        background: #181a1e;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        flex: 0 0 auto;
+        border: 1px solid #6f8c31;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 25% 25%, var(--accent) 0 13%, transparent 15%),
+          radial-gradient(circle at 75% 25%, var(--accent) 0 13%, transparent 15%),
+          radial-gradient(circle at 25% 75%, var(--accent) 0 13%, transparent 15%),
+          radial-gradient(circle at 75% 75%, var(--accent) 0 13%, transparent 15%);
+      }
+
+      .brand strong,
+      .brand span {
+        display: block;
+      }
+
+      .brand strong {
+        font-size: 15px;
+        letter-spacing: -0.02em;
+      }
+
+      .brand span {
+        margin-top: 3px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .topbar-note {
+        color: var(--muted-2);
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .workspace {
+        display: grid;
+        min-height: 0;
+        grid-template-columns: 280px minmax(0, 1fr) 340px;
+      }
+
+      .left-panel,
+      .right-panel {
+        min-height: 0;
+        overflow-y: auto;
+        background:
+          linear-gradient(180deg, rgb(255 255 255 / 3%), transparent 110px),
+          var(--panel);
+      }
+
+      .left-panel {
+        border-right: 1px solid var(--line);
+      }
+
+      .right-panel {
+        border-left: 1px solid var(--line);
+      }
+
+      .panel-block {
+        padding: 18px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .upload-zone {
+        display: block;
+        border: 1px dashed #454a55;
+        border-radius: 12px;
+        padding: 18px 12px;
+        background: rgb(255 255 255 / 2%);
+        text-align: center;
+      }
+
+      .upload-zone input {
+        display: none;
+      }
+
+      .upload-zone .button {
+        margin-bottom: 10px;
+      }
+
+      .panel-kicker {
+        margin-bottom: 12px;
+        color: var(--muted-2);
+        font-size: 9px;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .effect-title {
+        margin: 0 0 6px;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+
+      .effect-description,
+      .helper-text {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .preview-area {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-rows: 42px minmax(0, 1fr);
+        background:
+          radial-gradient(circle at center, rgb(255 255 255 / 4%), transparent 54%),
+          var(--canvas-bg);
+      }
+
+      .preview-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line-soft);
+        background: #17191d;
+      }
+
+      .preview-toolbar span {
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .preview-toolbar small {
+        overflow: hidden;
+        color: var(--muted-2);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .canvas-stage {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        padding: 32px;
+        background-image:
+          linear-gradient(45deg, #15171a 25%, transparent 25%),
+          linear-gradient(-45deg, #15171a 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #15171a 75%),
+          linear-gradient(-45deg, transparent 75%, #15171a 75%);
+        background-position:
+          0 0,
+          0 8px,
+          8px -8px,
+          -8px 0;
+        background-size: 16px 16px;
+      }
+
+      .canvas-stage::after {
+        position: absolute;
+        inset: 18px;
+        display: flex;
+        pointer-events: none;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed transparent;
+        border-radius: 14px;
+        background: transparent;
+        color: var(--accent);
+        font-size: 14px;
+        font-weight: 750;
+        letter-spacing: 0.04em;
+        opacity: 0;
+        content: "松开即可上传";
+        transition:
+          opacity 160ms ease,
+          border-color 160ms ease,
+          background 160ms ease;
+      }
+
+      .canvas-stage.is-dragover::after {
+        border-color: rgb(200 255 75 / 72%);
+        background: rgb(12 14 16 / 72%);
+        opacity: 1;
+      }
+
+      #previewCanvas {
+        display: none;
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+        flex-shrink: 1;
+        background: #fff;
+        box-shadow: 0 18px 46px rgb(0 0 0 / 38%);
+        object-fit: contain;
+      }
+
+      .canvas-hud {
+        position: absolute;
+        right: 46px;
+        bottom: 36px;
+        left: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border: 1px solid rgb(255 255 255 / 8%);
+        border-radius: 10px;
+        padding: 10px 12px;
+        background: rgb(18 20 24 / 76%);
+        color: var(--muted);
+        font-size: 11px;
+        backdrop-filter: blur(10px);
+      }
+
+      .empty-state {
+        max-width: 390px;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .empty-icon {
+        display: grid;
+        width: 76px;
+        margin: 0 auto 22px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 9px;
+      }
+
+      .empty-icon span {
+        display: block;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .empty-icon span:nth-child(2n) {
+        opacity: 0.72;
+        scale: 0.62;
+      }
+
+      .empty-icon span:nth-child(5) {
+        scale: 1.2;
+      }
+
+      .empty-state h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        letter-spacing: -0.035em;
+      }
+
+      .empty-state p {
+        margin: 0 auto 22px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+
+      .footerbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 0 18px;
+        border-top: 1px solid var(--line);
+        background: #181a1e;
+      }
+
+      .footerbar small {
+        color: var(--muted-2);
+        font-size: 11px;
+      }
+
+      /* =========================================================
+         03. Controls
+      ========================================================= */
+      .button {
+        display: inline-flex;
+        height: 36px;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        padding: 0 15px;
+        font-size: 13px;
+        font-weight: 700;
+        transition:
+          background 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease,
+          opacity 160ms ease;
+      }
+
+      .button input {
+        display: none;
+      }
+
+      .button-primary {
+        background: linear-gradient(135deg, var(--accent), #d93b75);
+        color: var(--accent-text);
+      }
+
+      .button-primary:hover {
+        background: linear-gradient(135deg, var(--accent-2), #ea4b84);
+      }
+
+      .button-secondary {
+        border-color: var(--line);
+        background: var(--panel-2);
+        color: var(--text);
+      }
+
+      .button-secondary:hover {
+        border-color: #474c55;
+        background: var(--panel-3);
+      }
+
+      .button:disabled {
+        cursor: not-allowed;
+        opacity: 0.38;
+      }
+
+      .control {
+        display: block;
+        margin-bottom: 18px;
+      }
+
+      .control:last-child {
+        margin-bottom: 0;
+      }
+
+      .control-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 9px;
+        color: #cbd0d8;
+        font-size: 12px;
+      }
+
+      .control-header output {
+        min-width: 32px;
+        border-radius: 4px;
+        padding: 3px 6px;
+        background: var(--panel-2);
+        color: var(--accent);
+        font-size: 11px;
+        text-align: center;
+      }
+
+      select,
+      input[type="color"] {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-2);
+        color: #cbd0d8;
+        outline: none;
+      }
+
+      select {
+        height: 36px;
+        cursor: pointer;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      select:focus,
+      input[type="color"]:focus {
+        border-color: #708e32;
+      }
+
+      input[type="color"] {
+        height: 36px;
+        cursor: pointer;
+        padding: 4px;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        height: 3px;
+        cursor: pointer;
+        appearance: none;
+        border-radius: 999px;
+        background: #383c44;
+        accent-color: var(--accent);
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        width: 13px;
+        height: 13px;
+        appearance: none;
+        border: 2px solid #202328;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 1px #a9275b;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 11px;
+        height: 11px;
+        border: 2px solid #202328;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .switch-control {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 16px;
+      }
+
+      .switch-control strong,
+      .switch-control small {
+        display: block;
+      }
+
+      .switch-control strong {
+        color: #cbd0d8;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .switch-control small {
+        margin-top: 4px;
+        color: var(--muted-2);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+
+      .switch {
+        position: relative;
+        display: block;
+        width: 36px;
+        height: 20px;
+        flex: 0 0 auto;
+      }
+
+      .switch input {
+        position: absolute;
+        opacity: 0;
+      }
+
+      .switch-track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: #383c43;
+        transition: background 160ms ease;
+      }
+
+      .switch-track::after {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #aeb3bc;
+        content: "";
+        transition:
+          translate 160ms ease,
+          background 160ms ease;
+      }
+
+      .switch input:checked + .switch-track {
+        background: #82314e;
+      }
+
+      .switch input:checked + .switch-track::after {
+        translate: 16px 0;
+        background: var(--accent);
+      }
+
+      .shape-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .shape-button {
+        min-height: 64px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 8px 6px;
+        background: var(--panel-2);
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .shape-icon {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--text);
+        font-size: 19px;
+        line-height: 1;
+      }
+
+      .shape-button span:last-child {
+        font-size: 10px;
+      }
+
+      .shape-button:hover,
+      .shape-button.is-active {
+        border-color: var(--accent);
+        background: rgb(240 90 138 / 10%);
+        color: var(--text);
+      }
+
+      .control-group {
+        padding: 16px 18px 18px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .control-group:last-child {
+        border-bottom: 0;
+      }
+
+      .control-group-title {
+        margin: 0 0 16px;
+        color: #f1f3f6;
+        font-size: 13px;
+        letter-spacing: -0.02em;
+      }
+
+      summary.control-group-title {
+        cursor: pointer;
+        list-style: none;
+        margin-bottom: 0;
+      }
+
+      summary.control-group-title::-webkit-details-marker {
+        display: none;
+      }
+
+      summary.control-group-title::after {
+        float: right;
+        color: var(--muted-2);
+        content: "+";
+      }
+
+      .advanced-group[open] summary.control-group-title {
+        margin-bottom: 16px;
+      }
+
+      .advanced-group[open] summary.control-group-title::after {
+        content: "−";
+      }
+
+      .scale-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 7px;
+      }
+
+      .scale-option {
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--panel-2);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .scale-option.is-active {
+        border-color: var(--accent);
+        background: rgb(240 90 138 / 16%);
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      @media (max-width: 980px) {
+        body {
+          overflow: auto;
+        }
+
+        .app-shell {
+          height: auto;
+          min-height: 100vh;
+          grid-template-rows: auto auto auto;
+        }
+
+        .topbar,
+        .footerbar {
+          min-height: 64px;
+        }
+
+        .topbar-note {
+          display: none;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .left-panel,
+        .right-panel {
+          border: 0;
+        }
+
+        .preview-area {
+          height: 58vh;
+          min-height: 360px;
+          order: -1;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <strong>Halftone Studio</strong>
+            <span>生成艺术图像编辑器，本地 Canvas 处理，不上传图片。</span>
+          </div>
+        </div>
+        <div class="topbar-note">当前效果：半调 Halftone</div>
+      </header>
+
+      <main class="workspace">
+        <aside class="left-panel" aria-label="项目设置">
+          <section class="panel-block">
+            <div class="panel-kicker">图片来源</div>
+            <label class="upload-zone" for="fileInput">
+              <span class="button button-primary">上传图片 / GIF / MP4</span>
+              <input id="fileInput" type="file" accept="image/*,video/mp4,video/*" />
+              <p class="helper-text" id="imageMeta">点击或拖拽文件到画布区域</p>
+            </label>
+          </section>
+
+          <section class="panel-block">
+            <div class="panel-kicker">效果</div>
+            <label class="control">
+              <span class="control-header">
+                <span>选择效果</span>
+              </span>
+              <select id="effectSelect"></select>
+            </label>
+            <h2 class="effect-title" id="effectName">半调 Halftone</h2>
+            <p class="effect-description" id="effectDescription"></p>
+          </section>
+
+          <section class="panel-block">
+            <div class="panel-kicker">Pattern 图形形式</div>
+            <div class="shape-grid" id="patternList"></div>
+          </section>
+        </aside>
+
+        <section class="preview-area" aria-label="图片预览">
+          <div class="preview-toolbar">
+            <span>画布预览</span>
+            <small id="previewInfo">适应窗口</small>
+          </div>
+
+          <div class="canvas-stage" id="canvasStage">
+            <canvas id="previewCanvas"></canvas>
+            <div class="canvas-hud">
+              <span id="mediaMode">静态图像</span>
+              <span id="canvasSize">等待文件</span>
+            </div>
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <h1>创建半调生成艺术图片</h1>
+              <p>点击选择文件，或把图片、GIF、MP4 直接拖到这里。所有计算都在浏览器本地完成。</p>
+              <label class="button button-primary" for="fileInput">选择文件</label>
+            </div>
+          </div>
+        </section>
+
+        <aside class="right-panel" aria-label="当前效果参数">
+          <div id="controlsPanel"></div>
+        </aside>
+      </main>
+
+      <footer class="footerbar">
+        <small id="exportHint">导出会使用当前网屏参数和当前预览帧。</small>
+        <button class="button button-primary" id="exportButton" type="button" disabled>
+          导出高清 PNG
+        </button>
+      </footer>
+    </div>
+
+    <script>
+      /* =========================================================
+         01. Effect Registry
+         新增效果时：复制一个 effect 对象，然后 registerEffect(effect)。
+      ========================================================= */
+      const effectsRegistry = new Map();
+
+      function registerEffect(effect) {
+        effectsRegistry.set(effect.id, effect);
+      }
+
+      /* =========================================================
+         02. Halftone Effect
+      ========================================================= */
+      const halftoneEffect = {
+        id: "halftone",
+        name: "半调 Halftone",
+        description: "将图像拆成 CMYK 油墨网屏，模拟丝网印刷、套印错位和粗糙纸张质感。",
+        defaultParams: {
+          pattern: "dot",
+          screenDensity: 62,
+          screenAngle: 45,
+          advancedAngles: {
+            cyan: 15,
+            magenta: 75,
+            yellow: 0,
+            black: 45,
+          },
+          dotCoverage: 0.86,
+          detail: 54,
+          inkStrength: 92,
+          blackKeyStrength: 118,
+          inkSpread: 0.32,
+          inkBleed: 24,
+          registrationOffset: 3,
+          paperBrightness: 92,
+          inkRoughness: 24,
+          inkGrain: 22,
+          cmykShift: true,
+          cyanOffset: 1.2,
+          magentaOffset: -1.1,
+          yellowOffset: 0.7,
+          blackOffset: 0.25,
+          paperFiber: 16,
+          paperGrain: 20,
+          backgroundColor: "#f3ead8",
+        },
+        controls: [
+          {
+            id: "pattern",
+            label: "Pattern 图形形式",
+            type: "select",
+            options: [
+              { value: "dot", label: "Dot 点" },
+              { value: "block", label: "Block 块" },
+              { value: "line", label: "Line 线" },
+              { value: "diamond", label: "Diamond 菱形" },
+              { value: "grid", label: "Grid 网格" },
+            ],
+            panel: "left",
+          },
+          { id: "screenDensity", label: "Screen Density 网点密度", type: "range", min: 0, max: 100, step: 1, group: "Screen 网屏控制" },
+          { id: "screenAngle", label: "Screen Angle 网点角度", type: "range", min: -90, max: 90, step: 1, group: "Screen 网屏控制" },
+          { id: "dotCoverage", label: "Dot Coverage 网点覆盖率", type: "range", min: 0.05, max: 1.4, step: 0.01, group: "Screen 网屏控制" },
+          { id: "detail", label: "Detail 细节保留", type: "range", min: 5, max: 100, step: 1, group: "Screen 网屏控制" },
+          { id: "inkStrength", label: "Ink Strength 油墨强度", type: "range", min: 10, max: 140, step: 1, group: "Ink 油墨控制" },
+          { id: "blackKeyStrength", label: "Black Key Strength 黑版强度", type: "range", min: 40, max: 180, step: 1, group: "Ink 油墨控制" },
+          { id: "inkSpread", label: "Ink Spread 油墨扩散", type: "range", min: 0, max: 1, step: 0.01, group: "Ink 油墨控制" },
+          { id: "inkBleed", label: "Ink Bleed 油墨晕染", type: "range", min: 0, max: 90, step: 1, group: "Ink 油墨控制" },
+          { id: "inkRoughness", label: "Ink Roughness 边缘粗糙", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
+          { id: "inkGrain", label: "Ink Grain 油墨颗粒", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
+          { id: "cmykShift", label: "CMYK Shift 油墨偏色", hint: "分离青、品红、黄、黑四个油墨通道", type: "checkbox", group: "Color Shift 偏色控制" },
+          { id: "registrationOffset", label: "Registration Offset 套印错位", type: "range", min: 0, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
+          { id: "cyanOffset", label: "Cyan Offset 青版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
+          { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
+          { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
+          { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
+          { id: "paperFiber", label: "Paper Fiber 纸张纤维", type: "range", min: 0, max: 100, step: 1, group: "Paper 纸张质感" },
+          { id: "paperGrain", label: "Paper Grain 纸张颗粒", type: "range", min: 0, max: 100, step: 1, group: "Paper 纸张质感" },
+          { id: "paperBrightness", label: "Paper Brightness 纸张亮度", type: "range", min: 40, max: 120, step: 1, group: "Paper 纸张质感" },
+          { id: "backgroundColor", label: "Background Color 纸张颜色", type: "color", group: "Paper 纸张质感" },
+        ],
+        render(ctx, image, params, canvas) {
+          const width = canvas.width;
+          const height = canvas.height;
+          renderSampleCanvas.width = width;
+          renderSampleCanvas.height = height;
+          renderSampleCtx.drawImage(image, 0, 0, width, height);
+          const pixels = renderSampleCtx.getImageData(0, 0, width, height).data;
+
+          ctx.fillStyle = adjustPaperColor(params.backgroundColor, params.paperBrightness);
+          ctx.fillRect(0, 0, width, height);
+          drawScreenPaper(ctx, width, height, params);
+          drawCmykScreen(ctx, pixels, width, height, params);
+        },
+      };
+
+      registerEffect(halftoneEffect);
+
+      /* =========================================================
+         03. Halftone Drawing Helpers
+      ========================================================= */
+      function clamp(value, min = 0, max = 255) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function hexToRgb(hex) {
+        const value = hex.replace("#", "");
+        return {
+          r: parseInt(value.slice(0, 2), 16),
+          g: parseInt(value.slice(2, 4), 16),
+          b: parseInt(value.slice(4, 6), 16),
+        };
+      }
+
+      function rgbaString(rgb, alpha = 1) {
+        return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${alpha})`;
+      }
+
+      function adjustPaperColor(hex, brightness) {
+        const rgb = hexToRgb(hex);
+        const amount = (Number(brightness) - 100) / 100;
+        const target = amount >= 0 ? 255 : 0;
+        const mix = Math.abs(amount);
+        return rgbaString({
+          r: rgb.r + (target - rgb.r) * mix,
+          g: rgb.g + (target - rgb.g) * mix,
+          b: rgb.b + (target - rgb.b) * mix,
+        });
+      }
+
+      function rgbToCmyk(r, g, b) {
+        const rn = r / 255;
+        const gn = g / 255;
+        const bn = b / 255;
+        const k = 1 - Math.max(rn, gn, bn);
+        if (k >= 0.999) return { c: 0, m: 0, y: 0, k: 1 };
+        return {
+          c: (1 - rn - k) / (1 - k),
+          m: (1 - gn - k) / (1 - k),
+          y: (1 - bn - k) / (1 - k),
+          k,
+        };
+      }
+
+      function getCmykAt(pixels, width, height, x, y, detail) {
+        const px = Math.min(width - 1, Math.max(0, Math.floor(x)));
+        const py = Math.min(height - 1, Math.max(0, Math.floor(y)));
+        const index = (py * width + px) * 4;
+        const alpha = pixels[index + 3] / 255;
+        const r = pixels[index];
+        const g = pixels[index + 1];
+        const b = pixels[index + 2];
+        const cmyk = rgbToCmyk(r, g, b);
+        const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        const keyBoost = Math.pow(1 - luma, 1.55) * alpha;
+        const detailPower = 1.55 - Number(detail) / 120;
+
+        return {
+          c: Math.pow(cmyk.c * alpha, detailPower),
+          m: Math.pow(cmyk.m * alpha, detailPower),
+          y: Math.pow(cmyk.y * alpha, detailPower),
+          k: clamp(Math.pow(cmyk.k * alpha, detailPower) + keyBoost * 0.55, 0, 1),
+        };
+      }
+
+      function drawCmykScreen(ctx, pixels, width, height, params) {
+        const densityRatio = Number(params.screenDensity) / 100;
+        const cellSize = 48 - densityRatio * 45.5;
+        const dotCoverage = clamp(Number(params.dotCoverage), 0.05, 1.4);
+        const maxDotSize = cellSize * dotCoverage;
+        const overflowLimit = cellSize * (1 + clamp(Number(params.inkSpread), 0, 1) * 0.6);
+        const shift = params.cmykShift ? Number(params.registrationOffset) : 0;
+        const baseAngles = params.advancedAngles || { cyan: 15, magenta: 75, yellow: 0, black: 45 };
+        const screenAngleOffset = Number(params.screenAngle ?? 45) - 45;
+        const channels = [
+          { key: "c", color: "#00a6d6", angle: baseAngles.cyan + screenAngleOffset, offset: Number(params.cyanOffset) * shift, strength: 1 },
+          { key: "m", color: "#ed2b8a", angle: baseAngles.magenta + screenAngleOffset, offset: Number(params.magentaOffset) * shift, strength: 1 },
+          { key: "y", color: "#f1cf2d", angle: baseAngles.yellow + screenAngleOffset, offset: Number(params.yellowOffset) * shift, strength: 0.95 },
+          { key: "k", color: "#15110d", angle: baseAngles.black + screenAngleOffset, offset: Number(params.blackOffset) * shift, strength: Number(params.blackKeyStrength) / 100 },
+        ];
+
+        ctx.save();
+        ctx.globalCompositeOperation = "multiply";
+        channels.forEach((channel, index) => {
+          drawInkChannel(ctx, pixels, width, height, params, {
+            ...channel,
+            cellSize,
+            maxDotSize,
+            overflowLimit,
+            seed: index + 1,
+          });
+        });
+        ctx.restore();
+      }
+
+      function gridToCanvas(gx, gy, centerX, centerY, cos, sin, channel) {
+        return {
+          x: centerX + gx * cos - gy * sin + channel.offset,
+          y: centerY + gx * sin + gy * cos - channel.offset * 0.65,
+        };
+      }
+
+      function drawInkChannel(ctx, pixels, width, height, params, channel) {
+        const radians = (channel.angle * Math.PI) / 180;
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const extent = Math.hypot(width, height);
+        const roughness = (Number(params.inkRoughness) + Number(params.inkBleed) * 0.55) / 100;
+        const grain = Number(params.inkGrain) / 100;
+        const spread = 1;
+        const density = (Number(params.inkStrength) / 92) * channel.strength;
+
+        ctx.fillStyle = channel.color;
+        ctx.strokeStyle = channel.color;
+
+        for (let gy = -extent / 2; gy < extent / 2; gy += channel.cellSize) {
+          for (let gx = -extent / 2; gx < extent / 2; gx += channel.cellSize) {
+            const { x, y } = gridToCanvas(gx, gy, centerX, centerY, cos, sin, channel);
+            if (x < -channel.cellSize || x >= width + channel.cellSize || y < -channel.cellSize || y >= height + channel.cellSize) continue;
+
+            const cmyk = getCmykAt(pixels, width, height, x, y, params.detail);
+            const inkAmount = cmyk[channel.key];
+            const grainLoss = 1 - grain * hashNoise(gx, gy, channel.seed + 20) * 0.45;
+            const keyScale = channel.key === "k" ? 1.18 : 1;
+            const channelAmount = Math.sqrt(inkAmount);
+            const rawSize = channelAmount * channel.maxDotSize * spread * grainLoss * keyScale;
+            const size = Math.min(rawSize, channel.overflowLimit);
+            if (size < 0.25) continue;
+
+            const alpha = clamp(inkAmount * density * (0.72 + hashNoise(gx, gy, channel.seed + 30) * 0.34), 0, 0.95);
+            ctx.globalAlpha = alpha;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(radians + (hashNoise(gx, gy, channel.seed + 40) - 0.5) * roughness * 0.45);
+            drawRoughPattern(ctx, params.pattern, size, channel.cellSize, roughness, grain, gx, gy, channel.seed);
+            if (channel.key === "k") drawKeyStripes(ctx, size, roughness, gx, gy, channel.seed);
+            ctx.restore();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawRoughPattern(ctx, pattern, size, spacing, roughness, grain, gx, gy, seed) {
+        const hole = hashNoise(gx, gy, seed + 50) < grain * 0.18;
+        if (hole) return;
+
+        if (pattern === "line") {
+          roughRect(ctx, -spacing / 2, -size / 2, spacing, size, roughness, gx, gy, seed);
+          return;
+        }
+
+        if (pattern === "grid") {
+          const bar = Math.max(0.6, size * 0.36);
+          roughRect(ctx, -spacing / 2, -bar / 2, spacing, bar, roughness, gx, gy, seed);
+          roughRect(ctx, -bar / 2, -spacing / 2, bar, spacing, roughness, gx, gy, seed + 3);
+          return;
+        }
+
+        if (pattern === "block") {
+          roughRect(ctx, -size / 2, -size / 2, size, size, roughness, gx, gy, seed);
+          return;
+        }
+
+        ctx.beginPath();
+        const sides = pattern === "diamond" ? 4 : 18;
+        for (let i = 0; i <= sides; i++) {
+          const angle = (i / sides) * Math.PI * 2 + (pattern === "diamond" ? Math.PI / 4 : 0);
+          const wobble = 1 + (hashNoise(gx + i, gy - i, seed + 60) - 0.5) * roughness * 0.55;
+          const radius = (size / 2) * wobble;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawScreenPaper(ctx, width, height, params) {
+        const grain = Number(params.paperGrain) / 100;
+        const fiber = Number(params.paperFiber) / 100;
+        const brightness = clamp(Number(params.paperBrightness) / 100, 0.4, 1.2);
+        if (grain <= 0 && fiber <= 0) return;
+
+        ctx.save();
+        for (let y = 0; y < height; y += 5) {
+          for (let x = 0; x < width; x += 5) {
+            const noise = hashNoise(x, y, 31);
+            const alpha = noise * grain * 0.1 * (1.25 - brightness * 0.35);
+            ctx.fillStyle = noise > 0.52 ? `rgba(255,255,255,${alpha})` : `rgba(30,22,12,${alpha})`;
+            ctx.fillRect(x, y, 5, 5);
+          }
+        }
+
+        ctx.strokeStyle = `rgba(80,60,38,${fiber * 0.08})`;
+        ctx.lineWidth = 1;
+        for (let y = 0; y < height; y += 18) {
+          const wobble = (hashNoise(y, 0, 32) - 0.5) * 12;
+          ctx.beginPath();
+          ctx.moveTo(0, y + wobble);
+          ctx.lineTo(width, y + wobble + (hashNoise(y, width, 33) - 0.5) * 20);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function roughRect(ctx, x, y, w, h, roughness, gx, gy, seed) {
+        const points = [
+          [x, y],
+          [x + w, y],
+          [x + w, y + h],
+          [x, y + h],
+        ];
+        ctx.beginPath();
+        points.forEach(([px, py], index) => {
+          const wobbleX = (hashNoise(gx, gy, seed + index) - 0.5) * roughness * Math.min(w, h) * 0.42;
+          const wobbleY = (hashNoise(gx, gy, seed + index + 9) - 0.5) * roughness * Math.min(w, h) * 0.42;
+          if (index === 0) ctx.moveTo(px + wobbleX, py + wobbleY);
+          else ctx.lineTo(px + wobbleX, py + wobbleY);
+        });
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawKeyStripes(ctx, size, roughness, gx, gy, seed) {
+        const stripeAlpha = 0.16 + roughness * 0.18;
+        const previousAlpha = ctx.globalAlpha;
+        ctx.save();
+        ctx.globalAlpha = previousAlpha * stripeAlpha;
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = Math.max(0.45, size * 0.06);
+        ctx.rotate((hashNoise(gx, gy, seed + 80) - 0.5) * 0.35);
+        for (let offset = -size * 0.45; offset <= size * 0.45; offset += Math.max(2, size * 0.22)) {
+          ctx.beginPath();
+          ctx.moveTo(-size * 0.46, offset);
+          ctx.lineTo(size * 0.46, offset + (hashNoise(gx + offset, gy, seed + 81) - 0.5) * size * 0.16);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function hashNoise(x, y, seed = 0) {
+        const value = Math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453;
+        return value - Math.floor(value);
+      }
+
+      /* =========================================================
+         04. App State
+      ========================================================= */
+      const dom = {
+        fileInput: document.querySelector("#fileInput"),
+        effectSelect: document.querySelector("#effectSelect"),
+        effectName: document.querySelector("#effectName"),
+        effectDescription: document.querySelector("#effectDescription"),
+        patternList: document.querySelector("#patternList"),
+        controlsPanel: document.querySelector("#controlsPanel"),
+        canvasStage: document.querySelector("#canvasStage"),
+        canvas: document.querySelector("#previewCanvas"),
+        emptyState: document.querySelector("#emptyState"),
+        imageMeta: document.querySelector("#imageMeta"),
+        previewInfo: document.querySelector("#previewInfo"),
+        mediaMode: document.querySelector("#mediaMode"),
+        canvasSize: document.querySelector("#canvasSize"),
+        exportButton: document.querySelector("#exportButton"),
+        exportHint: document.querySelector("#exportHint"),
+      };
+
+      const sourceCanvas = document.createElement("canvas");
+      const sourceCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+      const renderSampleCanvas = document.createElement("canvas");
+      const renderSampleCtx = renderSampleCanvas.getContext("2d", { willReadFrequently: true });
+      const previewCtx = dom.canvas.getContext("2d", { willReadFrequently: true });
+
+      const state = {
+        activeEffectId: "halftone",
+        paramsByEffect: {},
+        sourceImage: null,
+        sourceKind: "",
+        mediaUrl: "",
+        mediaLoop: null,
+        renderFrame: null,
+        lastAnimatedRenderAt: 0,
+      };
+
+      /* =========================================================
+         05. Dynamic UI
+      ========================================================= */
+      function getActiveEffect() {
+        return effectsRegistry.get(state.activeEffectId);
+      }
+
+      function getActiveParams() {
+        const effect = getActiveEffect();
+        if (!state.paramsByEffect[effect.id]) {
+          state.paramsByEffect[effect.id] = { ...effect.defaultParams };
+        }
+        return state.paramsByEffect[effect.id];
+      }
+
+      function initEffectSelect() {
+        dom.effectSelect.innerHTML = "";
+        for (const effect of effectsRegistry.values()) {
+          const option = document.createElement("option");
+          option.value = effect.id;
+          option.textContent = effect.name;
+          dom.effectSelect.append(option);
+        }
+
+        dom.effectSelect.value = state.activeEffectId;
+        dom.effectSelect.addEventListener("input", () => {
+          state.activeEffectId = dom.effectSelect.value;
+          renderEffectUI();
+          scheduleRender();
+        });
+      }
+
+      function renderEffectUI() {
+        const effect = getActiveEffect();
+        dom.effectName.textContent = effect.name;
+        dom.effectDescription.textContent = effect.description;
+        renderPatternOptions(effect);
+        renderControls(effect);
+      }
+
+      function renderPatternOptions(effect) {
+        const params = getActiveParams();
+        const patternControl = effect.controls.find((control) => control.id === "pattern");
+        const icons = {
+          dot: "●",
+          block: "■",
+          line: "▰",
+          diamond: "◆",
+          grid: "▦",
+        };
+        dom.patternList.innerHTML = "";
+        if (!patternControl) return;
+
+        patternControl.options.forEach((optionData) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `shape-button ${params.pattern === optionData.value ? "is-active" : ""}`;
+          button.innerHTML = `
+            <span class="shape-icon">${icons[optionData.value] || "●"}</span>
+            <span>${optionData.label}</span>
+          `;
+          button.addEventListener("click", () => {
+            params.pattern = optionData.value;
+            renderEffectUI();
+            scheduleRender();
+          });
+          dom.patternList.append(button);
+        });
+      }
+
+      function renderControls(effect) {
+        const params = getActiveParams();
+        dom.controlsPanel.innerHTML = "";
+        const groups = new Map();
+
+        effect.controls
+          .filter((control) => control.panel !== "left")
+          .filter((control) => shouldShowControl(control, params))
+          .forEach((control) => {
+            const groupName = control.group || "参数";
+            if (!groups.has(groupName)) groups.set(groupName, []);
+            groups.get(groupName).push(control);
+          });
+
+        groups.forEach((controls, groupName) => {
+          if (groupName === "Advanced") {
+            const details = document.createElement("details");
+            details.className = "control-group advanced-group";
+            details.innerHTML = `<summary class="control-group-title">Advanced 高级设置</summary>`;
+            controls.forEach((control) => details.append(createControl(control, params, effect)));
+            dom.controlsPanel.append(details);
+          } else {
+            const group = document.createElement("section");
+            group.className = "control-group";
+            group.innerHTML = `<h3 class="control-group-title">${groupName}</h3>`;
+            controls.forEach((control) => group.append(createControl(control, params, effect)));
+            dom.controlsPanel.append(group);
+          }
+        });
+      }
+
+      function shouldShowControl(control, params) {
+        if (!control.showWhen) return true;
+        return params[control.showWhen.id] === control.showWhen.value;
+      }
+
+      function createControl(control, params, effect) {
+        if (control.type === "checkbox") return createCheckboxControl(control, params);
+        if (control.type === "scale") return createScaleControl(control, params, effect);
+
+        const label = document.createElement("label");
+        label.className = "control";
+        const header = document.createElement("span");
+        header.className = "control-header";
+        header.innerHTML = `<span>${control.label}</span>`;
+
+        if (control.type === "range") {
+          const output = document.createElement("output");
+          output.textContent = params[control.id];
+          header.append(output);
+          label.append(header);
+          const input = document.createElement("input");
+          input.type = "range";
+          input.min = control.min;
+          input.max = control.max;
+          input.step = control.step || 1;
+          input.value = params[control.id];
+          input.addEventListener("input", () => {
+            params[control.id] = Number(input.value);
+            output.textContent = input.value;
+            scheduleRender();
+          });
+          label.append(input);
+        }
+
+        if (control.type === "select") {
+          label.append(header);
+          const select = document.createElement("select");
+          control.options.forEach((optionData) => {
+            const option = document.createElement("option");
+            option.value = optionData.value;
+            option.textContent = optionData.label;
+            select.append(option);
+          });
+          select.value = params[control.id];
+          select.addEventListener("input", () => {
+            params[control.id] = select.value;
+            if (control.id === "colorMode") {
+              params.useImageColor = select.value === "image";
+            }
+            renderEffectUI();
+            scheduleRender();
+          });
+          label.append(select);
+        }
+
+        if (control.type === "color") {
+          label.append(header);
+          const input = document.createElement("input");
+          input.type = "color";
+          input.value = params[control.id];
+          input.addEventListener("input", () => {
+            params[control.id] = input.value;
+            scheduleRender();
+          });
+          label.append(input);
+        }
+
+        return label;
+      }
+
+      function createScaleControl(control, params, effect) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "control";
+        wrapper.innerHTML = `<span class="control-header"><span>${control.label}</span></span>`;
+        const options = document.createElement("div");
+        options.className = "scale-options";
+
+        control.options.forEach((value) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `scale-option ${Number(params[control.id]) === value ? "is-active" : ""}`;
+          button.textContent = `${value}X`;
+          button.addEventListener("click", () => {
+            params[control.id] = value;
+            renderEffectUI();
+            scheduleRender();
+          });
+          options.append(button);
+        });
+
+        wrapper.append(options);
+        return wrapper;
+      }
+
+      function createCheckboxControl(control, params) {
+        const label = document.createElement("label");
+        label.className = "switch-control";
+        label.innerHTML = `
+          <span>
+            <strong>${control.label}</strong>
+            <small>${control.hint || ""}</small>
+          </span>
+          <span class="switch">
+            <input type="checkbox" ${params[control.id] ? "checked" : ""} />
+            <span class="switch-track"></span>
+          </span>
+        `;
+        const input = label.querySelector("input");
+        input.addEventListener("input", () => {
+          params[control.id] = input.checked;
+          if (control.id === "useImageColor") {
+            params.colorMode = input.checked ? "image" : "custom";
+          }
+          renderEffectUI();
+          scheduleRender();
+        });
+        return label;
+      }
+
+      /* =========================================================
+         06. Media Loading and Rendering
+      ========================================================= */
+      function resetMedia() {
+        if (state.mediaLoop) {
+          cancelAnimationFrame(state.mediaLoop);
+          state.mediaLoop = null;
+        }
+
+        if (state.sourceImage?.tagName === "VIDEO") {
+          state.sourceImage.pause();
+          state.sourceImage.removeAttribute("src");
+          state.sourceImage.load();
+        }
+
+        if (state.mediaUrl) {
+          URL.revokeObjectURL(state.mediaUrl);
+          state.mediaUrl = "";
+        }
+      }
+
+      function setSource(media, width, height, file, kind) {
+        sourceCanvas.width = width;
+        sourceCanvas.height = height;
+        state.sourceImage = media;
+        state.sourceKind = kind;
+
+        dom.canvas.style.display = "block";
+        dom.emptyState.hidden = true;
+        dom.exportButton.disabled = false;
+        dom.imageMeta.textContent = `${file.name} · ${kind} · ${width} × ${height}px`;
+        dom.previewInfo.textContent = `${width} × ${height}px · 适应窗口`;
+        dom.mediaMode.textContent = kind === "MP4" || kind === "GIF" ? `动态预览 · ${kind}` : "静态图像";
+        dom.canvasSize.textContent = `${width} × ${height}`;
+        scheduleRender();
+      }
+
+      function startAnimatedRenderLoop() {
+        if (state.mediaLoop) cancelAnimationFrame(state.mediaLoop);
+
+        const tick = (time) => {
+          if (time - state.lastAnimatedRenderAt > 1000 / 12) {
+            state.lastAnimatedRenderAt = time;
+            scheduleRender();
+          }
+          state.mediaLoop = requestAnimationFrame(tick);
+        };
+
+        state.mediaLoop = requestAnimationFrame(tick);
+      }
+
+      function loadMedia(file) {
+        if (!file) return;
+        resetMedia();
+
+        if (file.type.startsWith("video/")) {
+          loadVideo(file);
+          return;
+        }
+
+        if (file.type.startsWith("image/")) {
+          loadImage(file);
+          return;
+        }
+
+        alert("暂不支持这个文件格式，请上传图片、GIF 或 MP4。");
+      }
+
+      function getDraggedFile(event) {
+        return event.dataTransfer?.files?.[0] || null;
+      }
+
+      function preventDefaultDrag(event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+      function loadImage(file) {
+        const isGif = file.type === "image/gif";
+
+        const image = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        state.mediaUrl = objectUrl;
+
+        image.onload = () => {
+          const maxSide = 1800;
+          const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+          const width = Math.round(image.naturalWidth * scale);
+          const height = Math.round(image.naturalHeight * scale);
+
+          setSource(image, width, height, file, isGif ? "GIF" : "图片");
+          if (isGif) startAnimatedRenderLoop();
+        };
+
+        image.onerror = () => {
+          resetMedia();
+          alert("无法读取这个图片文件，请尝试其他格式。");
+        };
+
+        image.src = objectUrl;
+      }
+
+      function loadVideo(file) {
+        const video = document.createElement("video");
+        const objectUrl = URL.createObjectURL(file);
+        state.mediaUrl = objectUrl;
+
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+
+        video.addEventListener(
+          "loadeddata",
+          () => {
+            const maxSide = 1800;
+            const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+            const width = Math.round(video.videoWidth * scale);
+            const height = Math.round(video.videoHeight * scale);
+
+            setSource(video, width, height, file, "MP4");
+            startAnimatedRenderLoop();
+            video.play().catch(() => {
+              dom.imageMeta.textContent += " · 点击浏览器播放权限后可继续预览动态帧";
+            });
+          },
+          { once: true },
+        );
+
+        video.onerror = () => {
+          resetMedia();
+          alert("无法读取这个视频文件，请尝试 MP4 格式。");
+        };
+
+        video.src = objectUrl;
+      }
+
+      function scheduleRender() {
+        if (!state.sourceImage || state.renderFrame) return;
+        state.renderFrame = requestAnimationFrame(() => {
+          state.renderFrame = null;
+          renderPreview();
+        });
+      }
+
+      function getPreviewDimensions() {
+        const maxPreviewSide = 980;
+        const sourceWidth = sourceCanvas.width;
+        const sourceHeight = sourceCanvas.height;
+        const scale = Math.min(1, maxPreviewSide / Math.max(sourceWidth, sourceHeight));
+        return {
+          width: Math.max(1, Math.round(sourceWidth * scale)),
+          height: Math.max(1, Math.round(sourceHeight * scale)),
+          scale,
+        };
+      }
+
+      function renderPreview() {
+        if (state.sourceImage?.tagName === "VIDEO" && state.sourceImage.readyState < 2) return;
+
+        const effect = getActiveEffect();
+        const params = getActiveParams();
+        const previewSize = getPreviewDimensions();
+        dom.canvas.width = previewSize.width;
+        dom.canvas.height = previewSize.height;
+        dom.previewInfo.textContent = `${sourceCanvas.width} × ${sourceCanvas.height}px · 预览 ${previewSize.width} × ${previewSize.height}px`;
+        effect.render(previewCtx, state.sourceImage, params, dom.canvas);
+      }
+
+      function exportPng() {
+        if (!state.sourceImage) return;
+        if (state.sourceImage?.tagName === "VIDEO" && state.sourceImage.readyState < 2) return;
+
+        const effect = getActiveEffect();
+        const params = getActiveParams();
+        const scale = 1;
+        const exportCanvas = document.createElement("canvas");
+        const exportCtx = exportCanvas.getContext("2d", { willReadFrequently: true });
+
+        exportCanvas.width = Math.round(sourceCanvas.width * scale);
+        exportCanvas.height = Math.round(sourceCanvas.height * scale);
+        effect.render(exportCtx, state.sourceImage, params, exportCanvas);
+
+        const link = document.createElement("a");
+        link.download = `${effect.id}-export.png`;
+        link.href = exportCanvas.toDataURL("image/png");
+        link.click();
+      }
+
+      /* =========================================================
+         07. Boot
+      ========================================================= */
+      dom.fileInput.addEventListener("change", (event) => {
+        loadMedia(event.target.files[0]);
+        event.target.value = "";
+      });
+
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dom.canvasStage.addEventListener(eventName, (event) => {
+          preventDefaultDrag(event);
+          dom.canvasStage.classList.add("is-dragover");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((eventName) => {
+        dom.canvasStage.addEventListener(eventName, (event) => {
+          preventDefaultDrag(event);
+          dom.canvasStage.classList.remove("is-dragover");
+        });
+      });
+
+      dom.canvasStage.addEventListener("drop", (event) => {
+        const file = getDraggedFile(event);
+        if (file) loadMedia(file);
+      });
+
+      document.addEventListener("dragover", preventDefaultDrag);
+      document.addEventListener("drop", preventDefaultDrag);
+
+      dom.exportButton.addEventListener("click", exportPng);
+
+      initEffectSelect();
+      renderEffectUI();
+    </script>
+  </body>
+</html>
