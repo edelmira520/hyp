@@ -568,29 +568,21 @@
 
       .shape-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
       }
 
       .shape-button {
-        min-height: 64px;
+        min-height: 40px;
         border: 1px solid var(--line);
         border-radius: 9px;
-        padding: 8px 6px;
+        padding: 8px 10px;
         background: var(--panel-2);
         color: var(--muted);
         text-align: center;
       }
 
-      .shape-icon {
-        display: block;
-        margin-bottom: 6px;
-        color: var(--text);
-        font-size: 19px;
-        line-height: 1;
-      }
-
-      .shape-button span:last-child {
+      .shape-button span {
         font-size: 10px;
       }
 
@@ -743,7 +735,7 @@
           </section>
 
           <section class="panel-block">
-            <div class="panel-kicker">Pattern 图形形式</div>
+            <div class="panel-kicker">Shape 网屏形状</div>
             <div class="shape-grid" id="patternList"></div>
           </section>
         </aside>
@@ -803,13 +795,28 @@
         effectsRegistry.set(effect.id, effect);
       }
 
+      const MAX_SOURCE_SIDE = 1800;
+      const MAX_PREVIEW_SIDE = 980;
+      const ANIMATED_RENDER_FPS = 12;
+
+      function resizeCanvasIfNeeded(canvas, width, height) {
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
+      }
+
+      function cloneParams(params) {
+        return typeof structuredClone === "function"
+          ? structuredClone(params)
+          : JSON.parse(JSON.stringify(params));
+      }
+
       /* =========================================================
          02. Halftone Effect
       ========================================================= */
       const halftoneEffect = {
         id: "halftone",
         name: "半调 Halftone",
-        description: "将图像拆成 CMYK 油墨网屏，模拟丝网印刷、套印错位和粗糙纸张质感。",
+        description: "将图像拆成 CMYK 油墨网屏，模拟丝网印刷、套印错位和油墨颗粒质感。",
         defaultParams: {
           pattern: "dot",
           screenDensity: 62,
@@ -827,7 +834,6 @@
           inkSpread: 0.32,
           inkBleed: 24,
           registrationOffset: 3,
-          paperBrightness: 92,
           inkRoughness: 24,
           inkGrain: 22,
           cmykShift: true,
@@ -835,21 +841,20 @@
           magentaOffset: -1.1,
           yellowOffset: 0.7,
           blackOffset: 0.25,
-          paperFiber: 16,
-          paperGrain: 20,
           backgroundColor: "#f3ead8",
         },
         controls: [
           {
             id: "pattern",
-            label: "Pattern 图形形式",
+            label: "Shape 网屏形状",
             type: "select",
             options: [
-              { value: "dot", label: "Dot 点" },
-              { value: "block", label: "Block 块" },
-              { value: "line", label: "Line 线" },
+              { value: "dot", label: "Round 圆形" },
+              { value: "ellipse", label: "Ellipse 椭圆" },
               { value: "diamond", label: "Diamond 菱形" },
-              { value: "grid", label: "Grid 网格" },
+              { value: "line", label: "Line 直线" },
+              { value: "block", label: "Square 方形" },
+              { value: "cross", label: "Cross 十字线" },
             ],
             panel: "left",
           },
@@ -869,22 +874,17 @@
           { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
           { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
           { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: { id: "cmykShift", value: true } },
-          { id: "paperFiber", label: "Paper Fiber 纸张纤维", type: "range", min: 0, max: 100, step: 1, group: "Paper 纸张质感" },
-          { id: "paperGrain", label: "Paper Grain 纸张颗粒", type: "range", min: 0, max: 100, step: 1, group: "Paper 纸张质感" },
-          { id: "paperBrightness", label: "Paper Brightness 纸张亮度", type: "range", min: 40, max: 120, step: 1, group: "Paper 纸张质感" },
-          { id: "backgroundColor", label: "Background Color 纸张颜色", type: "color", group: "Paper 纸张质感" },
+          { id: "backgroundColor", label: "Background Color 背景颜色", type: "color", group: "Background 背景" },
         ],
         render(ctx, image, params, canvas) {
           const width = canvas.width;
           const height = canvas.height;
-          renderSampleCanvas.width = width;
-          renderSampleCanvas.height = height;
+          resizeCanvasIfNeeded(renderSampleCanvas, width, height);
           renderSampleCtx.drawImage(image, 0, 0, width, height);
           const pixels = renderSampleCtx.getImageData(0, 0, width, height).data;
 
-          ctx.fillStyle = adjustPaperColor(params.backgroundColor, params.paperBrightness);
+          ctx.fillStyle = params.backgroundColor;
           ctx.fillRect(0, 0, width, height);
-          drawScreenPaper(ctx, width, height, params);
           drawCmykScreen(ctx, pixels, width, height, params);
         },
       };
@@ -896,31 +896,6 @@
       ========================================================= */
       function clamp(value, min = 0, max = 255) {
         return Math.min(max, Math.max(min, value));
-      }
-
-      function hexToRgb(hex) {
-        const value = hex.replace("#", "");
-        return {
-          r: parseInt(value.slice(0, 2), 16),
-          g: parseInt(value.slice(2, 4), 16),
-          b: parseInt(value.slice(4, 6), 16),
-        };
-      }
-
-      function rgbaString(rgb, alpha = 1) {
-        return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${alpha})`;
-      }
-
-      function adjustPaperColor(hex, brightness) {
-        const rgb = hexToRgb(hex);
-        const amount = (Number(brightness) - 100) / 100;
-        const target = amount >= 0 ? 255 : 0;
-        const mix = Math.abs(amount);
-        return rgbaString({
-          r: rgb.r + (target - rgb.r) * mix,
-          g: rgb.g + (target - rgb.g) * mix,
-          b: rgb.b + (target - rgb.b) * mix,
-        });
       }
 
       function rgbToCmyk(r, g, b) {
@@ -1064,14 +1039,15 @@
         if (hole) return;
 
         if (pattern === "line") {
-          roughRect(ctx, -spacing / 2, -size / 2, spacing, size, roughness, gx, gy, seed);
+          roughRect(ctx, -spacing * 0.58, -size / 2, spacing * 1.16, size, roughness, gx, gy, seed);
           return;
         }
 
-        if (pattern === "grid") {
-          const bar = Math.max(0.6, size * 0.36);
-          roughRect(ctx, -spacing / 2, -bar / 2, spacing, bar, roughness, gx, gy, seed);
-          roughRect(ctx, -bar / 2, -spacing / 2, bar, spacing, roughness, gx, gy, seed + 3);
+        if (pattern === "cross") {
+          const arm = Math.min(spacing, Math.max(size, spacing * 0.34));
+          const bar = Math.max(0.6, size * 0.3);
+          roughRect(ctx, -arm / 2, -bar / 2, arm, bar, roughness, gx, gy, seed);
+          roughRect(ctx, -bar / 2, -arm / 2, bar, arm, roughness, gx, gy, seed + 3);
           return;
         }
 
@@ -1085,42 +1061,15 @@
         for (let i = 0; i <= sides; i++) {
           const angle = (i / sides) * Math.PI * 2 + (pattern === "diamond" ? Math.PI / 4 : 0);
           const wobble = 1 + (hashNoise(gx + i, gy - i, seed + 60) - 0.5) * roughness * 0.55;
-          const radius = (size / 2) * wobble;
-          const x = Math.cos(angle) * radius;
-          const y = Math.sin(angle) * radius;
+          const radiusX = (size / 2) * (pattern === "ellipse" ? 1.28 : 1) * wobble;
+          const radiusY = (size / 2) * (pattern === "ellipse" ? 0.68 : 1) * wobble;
+          const x = Math.cos(angle) * radiusX;
+          const y = Math.sin(angle) * radiusY;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.closePath();
         ctx.fill();
-      }
-
-      function drawScreenPaper(ctx, width, height, params) {
-        const grain = Number(params.paperGrain) / 100;
-        const fiber = Number(params.paperFiber) / 100;
-        const brightness = clamp(Number(params.paperBrightness) / 100, 0.4, 1.2);
-        if (grain <= 0 && fiber <= 0) return;
-
-        ctx.save();
-        for (let y = 0; y < height; y += 5) {
-          for (let x = 0; x < width; x += 5) {
-            const noise = hashNoise(x, y, 31);
-            const alpha = noise * grain * 0.1 * (1.25 - brightness * 0.35);
-            ctx.fillStyle = noise > 0.52 ? `rgba(255,255,255,${alpha})` : `rgba(30,22,12,${alpha})`;
-            ctx.fillRect(x, y, 5, 5);
-          }
-        }
-
-        ctx.strokeStyle = `rgba(80,60,38,${fiber * 0.08})`;
-        ctx.lineWidth = 1;
-        for (let y = 0; y < height; y += 18) {
-          const wobble = (hashNoise(y, 0, 32) - 0.5) * 12;
-          ctx.beginPath();
-          ctx.moveTo(0, y + wobble);
-          ctx.lineTo(width, y + wobble + (hashNoise(y, width, 33) - 0.5) * 20);
-          ctx.stroke();
-        }
-        ctx.restore();
       }
 
       function roughRect(ctx, x, y, w, h, roughness, gx, gy, seed) {
@@ -1185,7 +1134,6 @@
       };
 
       const sourceCanvas = document.createElement("canvas");
-      const sourceCtx = sourceCanvas.getContext("2d", { willReadFrequently: true });
       const renderSampleCanvas = document.createElement("canvas");
       const renderSampleCtx = renderSampleCanvas.getContext("2d", { willReadFrequently: true });
       const previewCtx = dom.canvas.getContext("2d", { willReadFrequently: true });
@@ -1211,7 +1159,7 @@
       function getActiveParams() {
         const effect = getActiveEffect();
         if (!state.paramsByEffect[effect.id]) {
-          state.paramsByEffect[effect.id] = { ...effect.defaultParams };
+          state.paramsByEffect[effect.id] = cloneParams(effect.defaultParams);
         }
         return state.paramsByEffect[effect.id];
       }
@@ -1244,13 +1192,6 @@
       function renderPatternOptions(effect) {
         const params = getActiveParams();
         const patternControl = effect.controls.find((control) => control.id === "pattern");
-        const icons = {
-          dot: "●",
-          block: "■",
-          line: "▰",
-          diamond: "◆",
-          grid: "▦",
-        };
         dom.patternList.innerHTML = "";
         if (!patternControl) return;
 
@@ -1258,10 +1199,9 @@
           const button = document.createElement("button");
           button.type = "button";
           button.className = `shape-button ${params.pattern === optionData.value ? "is-active" : ""}`;
-          button.innerHTML = `
-            <span class="shape-icon">${icons[optionData.value] || "●"}</span>
-            <span>${optionData.label}</span>
-          `;
+          const label = document.createElement("span");
+          label.textContent = optionData.label;
+          button.append(label);
           button.addEventListener("click", () => {
             params.pattern = optionData.value;
             renderEffectUI();
@@ -1443,8 +1383,7 @@
       }
 
       function setSource(media, width, height, file, kind) {
-        sourceCanvas.width = width;
-        sourceCanvas.height = height;
+        resizeCanvasIfNeeded(sourceCanvas, width, height);
         state.sourceImage = media;
         state.sourceKind = kind;
 
@@ -1462,7 +1401,7 @@
         if (state.mediaLoop) cancelAnimationFrame(state.mediaLoop);
 
         const tick = (time) => {
-          if (time - state.lastAnimatedRenderAt > 1000 / 12) {
+          if (time - state.lastAnimatedRenderAt > 1000 / ANIMATED_RENDER_FPS) {
             state.lastAnimatedRenderAt = time;
             scheduleRender();
           }
@@ -1506,8 +1445,7 @@
         state.mediaUrl = objectUrl;
 
         image.onload = () => {
-          const maxSide = 1800;
-          const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+          const scale = Math.min(1, MAX_SOURCE_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
           const width = Math.round(image.naturalWidth * scale);
           const height = Math.round(image.naturalHeight * scale);
 
@@ -1536,8 +1474,7 @@
         video.addEventListener(
           "loadeddata",
           () => {
-            const maxSide = 1800;
-            const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+            const scale = Math.min(1, MAX_SOURCE_SIDE / Math.max(video.videoWidth, video.videoHeight));
             const width = Math.round(video.videoWidth * scale);
             const height = Math.round(video.videoHeight * scale);
 
@@ -1567,10 +1504,9 @@
       }
 
       function getPreviewDimensions() {
-        const maxPreviewSide = 980;
         const sourceWidth = sourceCanvas.width;
         const sourceHeight = sourceCanvas.height;
-        const scale = Math.min(1, maxPreviewSide / Math.max(sourceWidth, sourceHeight));
+        const scale = Math.min(1, MAX_PREVIEW_SIDE / Math.max(sourceWidth, sourceHeight));
         return {
           width: Math.max(1, Math.round(sourceWidth * scale)),
           height: Math.max(1, Math.round(sourceHeight * scale)),
@@ -1584,8 +1520,7 @@
         const effect = getActiveEffect();
         const params = getActiveParams();
         const previewSize = getPreviewDimensions();
-        dom.canvas.width = previewSize.width;
-        dom.canvas.height = previewSize.height;
+        resizeCanvasIfNeeded(dom.canvas, previewSize.width, previewSize.height);
         dom.previewInfo.textContent = `${sourceCanvas.width} × ${sourceCanvas.height}px · 预览 ${previewSize.width} × ${previewSize.height}px`;
         effect.render(previewCtx, state.sourceImage, params, dom.canvas);
       }
@@ -1604,10 +1539,25 @@
         exportCanvas.height = Math.round(sourceCanvas.height * scale);
         effect.render(exportCtx, state.sourceImage, params, exportCanvas);
 
-        const link = document.createElement("a");
-        link.download = `${effect.id}-export.png`;
-        link.href = exportCanvas.toDataURL("image/png");
-        link.click();
+        dom.exportButton.disabled = true;
+        dom.exportButton.textContent = "正在导出...";
+
+        exportCanvas.toBlob((blob) => {
+          dom.exportButton.disabled = false;
+          dom.exportButton.textContent = "导出高清 PNG";
+
+          if (!blob) {
+            alert("导出失败，请再试一次。");
+            return;
+          }
+
+          const link = document.createElement("a");
+          const objectUrl = URL.createObjectURL(blob);
+          link.download = `${effect.id}-export.png`;
+          link.href = objectUrl;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        }, "image/png");
       }
 
       /* =========================================================
