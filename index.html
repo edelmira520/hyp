@@ -1198,9 +1198,10 @@
         const linePadding = channel.cellSize * 2;
 
         for (let gy = -extent / 2; gy < extent / 2; gy += rowStep) {
+          const samples = [];
           const upperEdge = [];
           const lowerEdge = [];
-          let strongestInk = 0;
+          let hasInk = false;
 
           for (let gx = -extent / 2 - linePadding; gx <= extent / 2 + linePadding; gx += sampleStep) {
             const { x, y } = gridToCanvas(gx, gy, centerX, centerY, cos, sin, channel);
@@ -1208,30 +1209,35 @@
             const grainLoss = 1 - grain * hashNoise(gx, gy, channel.seed + 20) * 0.32;
             const rawThickness = Math.sqrt(inkAmount) * channel.maxDotSize * grainLoss * keyScale;
             const thickness = Math.min(rawThickness, rowStep * 0.92);
-            strongestInk = Math.max(strongestInk, inkAmount);
+            if (thickness >= 0.2) hasInk = true;
+            samples.push({ gx, thickness });
+          }
 
-            const wobble = (hashNoise(gx, gy, channel.seed + 70) - 0.5) * roughness * rowStep * 0.12;
+          if (!hasInk) continue;
+
+          samples.forEach((sample, index) => {
+            const previous = samples[Math.max(0, index - 1)].thickness;
+            const next = samples[Math.min(samples.length - 1, index + 1)].thickness;
+            const thickness = previous * 0.25 + sample.thickness * 0.5 + next * 0.25;
+
+            const wobble = (hashNoise(sample.gx, gy, channel.seed + 70) - 0.5) * roughness * rowStep * 0.08;
             const half = Math.max(0, thickness / 2 + wobble);
-            const edgeX = centerX + gx * cos - (gy - half) * sin + channel.offset;
-            const edgeY = centerY + gx * sin + (gy - half) * cos - channel.offset * 0.65;
-            const lowerX = centerX + gx * cos - (gy + half) * sin + channel.offset;
-            const lowerY = centerY + gx * sin + (gy + half) * cos - channel.offset * 0.65;
+            const edgeX = centerX + sample.gx * cos - (gy - half) * sin + channel.offset;
+            const edgeY = centerY + sample.gx * sin + (gy - half) * cos - channel.offset * 0.65;
+            const lowerX = centerX + sample.gx * cos - (gy + half) * sin + channel.offset;
+            const lowerY = centerY + sample.gx * sin + (gy + half) * cos - channel.offset * 0.65;
 
             upperEdge.push({ x: edgeX, y: edgeY, thickness });
             lowerEdge.push({ x: lowerX, y: lowerY, thickness });
-          }
+          });
 
-          if (strongestInk <= 0.01) continue;
-
-          const alpha = clamp(strongestInk * density * (0.76 + hashNoise(gy, strongestInk, channel.seed + 30) * 0.18), 0, 0.88);
+          const alpha = clamp(density * 0.82, 0, 0.88);
           ctx.globalAlpha = alpha;
           ctx.beginPath();
 
-          let hasInk = false;
           upperEdge.forEach((point, index) => {
             if (index === 0) ctx.moveTo(point.x, point.y);
             else ctx.lineTo(point.x, point.y);
-            if (point.thickness >= 0.2) hasInk = true;
           });
 
           for (let index = lowerEdge.length - 1; index >= 0; index--) {
@@ -1239,10 +1245,8 @@
             ctx.lineTo(point.x, point.y);
           }
 
-          if (hasInk) {
-            ctx.closePath();
-            ctx.fill();
-          }
+          ctx.closePath();
+          ctx.fill();
         }
         ctx.globalAlpha = 1;
       }
