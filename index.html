@@ -993,7 +993,22 @@
       ========================================================= */
       const effectsRegistry = new Map();
 
+      function validateEffectDefinition(effect) {
+        const defaultParams = effect.defaultParams || {};
+        const directControlTypes = new Set(["checkbox", "color", "range", "scale", "segmented", "select"]);
+
+        (effect.controls || []).forEach((control) => {
+          if (!control.id || !directControlTypes.has(control.type)) return;
+          if (!Object.prototype.hasOwnProperty.call(defaultParams, control.id)) {
+            console.warn(
+              `[Dotforge] Effect "${effect.id}" control "${control.id}" is missing a matching defaultParams value.`,
+            );
+          }
+        });
+      }
+
       function registerEffect(effect) {
+        validateEffectDefinition(effect);
         effectsRegistry.set(effect.id, effect);
       }
 
@@ -1019,6 +1034,11 @@
         id: "halftone",
         name: "半调 Halftone",
         description: "将图像转换为印刷网屏，可使用 CMYK 分色或单色油墨模拟丝网印刷质感。",
+        // Parameter governance:
+        // defaultParams is the single source of truth for fresh load and Reset.
+        // Future Presets should clone effect.defaultParams first, then merge preset params.
+        // New direct controls need matching default values here.
+        // New effects should define their own defaultParams and controls.
         defaultParams: {
           colorMode: "cmyk",
           pattern: "dot",

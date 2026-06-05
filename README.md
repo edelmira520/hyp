@@ -40,3 +40,16 @@ python3 -m http.server 8000
 ```text
 http://localhost:8000
 ```
+
+## Regression checklist
+
+在修改参数、Reset、导出或新增 effect 前后，建议手动检查：
+
+- 上传一张静态图片，并确认画布可以正常预览。
+- 修改 Shape，以及 Basic / Texture / Advanced CMYK 参数。
+- 在 CMYK / Single Ink 之间切换，并确认控件和预览正常更新。
+- 点击 Reset，并确认控件和预览回到当前 effect 的默认参数。
+- 切换透明背景，并确认预览和导出行为正常。
+- 分别以 1x / 2x / 3x 导出 PNG。
+- 测试 GIF 或 MP4 动态预览。
+- 检查浏览器控制台是否有明显错误。
