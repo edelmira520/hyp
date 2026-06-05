@@ -712,6 +712,43 @@
         background: rgb(255 255 255 / 2.5%);
       }
 
+      .controls-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 12px 2px;
+      }
+
+      .controls-header-title {
+        min-width: 0;
+      }
+
+      .controls-header-title strong,
+      .controls-header-title span {
+        display: block;
+      }
+
+      .controls-header-title strong {
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .controls-header-title span {
+        margin-top: 3px;
+        color: var(--muted-2);
+        font-size: 10px;
+      }
+
+      .reset-button {
+        height: 30px;
+        flex: 0 0 auto;
+        border-color: #3c414b;
+        padding: 0 11px;
+        color: #cbd0d8;
+        font-size: 11px;
+      }
+
       .control-group:last-child {
         margin-bottom: 12px;
       }
@@ -934,6 +971,15 @@
         </section>
 
         <aside class="right-panel" aria-label="当前效果参数">
+          <div class="controls-header">
+            <div class="controls-header-title">
+              <strong>参数</strong>
+              <span>当前效果设置</span>
+            </div>
+            <button class="button button-secondary reset-button" id="resetEffectButton" type="button">
+              Reset
+            </button>
+          </div>
           <div id="controlsPanel"></div>
         </aside>
       </main>
@@ -1429,6 +1475,7 @@
         effectDescription: document.querySelector("#effectDescription"),
         patternList: document.querySelector("#patternList"),
         controlsPanel: document.querySelector("#controlsPanel"),
+        resetEffectButton: document.querySelector("#resetEffectButton"),
         canvasStage: document.querySelector("#canvasStage"),
         canvas: document.querySelector("#previewCanvas"),
         emptyState: document.querySelector("#emptyState"),
@@ -1477,6 +1524,13 @@
           state.paramsByEffect[effect.id] = cloneParams(effect.defaultParams);
         }
         return state.paramsByEffect[effect.id];
+      }
+
+      function resetActiveEffectParams() {
+        const effect = getActiveEffect();
+        state.paramsByEffect[effect.id] = cloneParams(effect.defaultParams);
+        renderEffectUI();
+        scheduleRender();
       }
 
       function initEffectSelect() {
@@ -2089,6 +2143,7 @@
       });
       dom.exportButton.addEventListener("click", exportPng);
       dom.transparentExport.addEventListener("change", scheduleRender);
+      dom.resetEffectButton.addEventListener("click", resetActiveEffectParams);
 
       initEffectSelect();
       renderEffectUI();
