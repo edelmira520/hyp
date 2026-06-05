@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dot Studio - 生成艺术效果编辑器</title>
+    <title>Dotforge - 生成艺术效果编辑器</title>
     <style>
       /* =========================================================
          01. Design Tokens
@@ -64,7 +64,7 @@
       .app-shell {
         display: grid;
         height: 100vh;
-        grid-template-rows: 72px minmax(0, 1fr) 58px;
+        grid-template-rows: 72px minmax(0, 1fr);
       }
 
       .topbar {
@@ -117,12 +117,6 @@
         white-space: nowrap;
       }
 
-      .topbar-note {
-        color: var(--muted-2);
-        font-size: 11px;
-        text-align: right;
-      }
-
       .workspace {
         display: grid;
         min-height: 0;
@@ -151,21 +145,26 @@
         border-bottom: 1px solid var(--line-soft);
       }
 
-      .upload-zone {
-        display: block;
-        border: 1px dashed #454a55;
-        border-radius: 12px;
-        padding: 18px 12px;
-        background: rgb(255 255 255 / 2%);
-        text-align: center;
+      .asset-summary {
+        display: grid;
+        gap: 10px;
       }
 
-      .upload-zone input {
+      .asset-summary input {
         display: none;
       }
 
-      .upload-zone .button {
-        margin-bottom: 10px;
+      .asset-name {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .asset-action {
+        width: fit-content;
       }
 
       .panel-kicker {
@@ -337,33 +336,86 @@
         line-height: 1.7;
       }
 
-      .footerbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 14px;
-        padding: 0 18px;
-        border-top: 1px solid var(--line);
-        background: #181a1e;
-      }
-
-      .footerbar small {
-        color: var(--muted-2);
-        font-size: 11px;
-      }
-
       .export-actions {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 14px;
+      }
+
+      .export-popover {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        z-index: 20;
+        width: 258px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px;
+        background: #1d2026;
+        box-shadow: 0 18px 44px rgb(0 0 0 / 42%);
+      }
+
+      .export-popover[hidden] {
+        display: none;
+      }
+
+      .export-popover::before {
+        position: absolute;
+        top: -6px;
+        right: 22px;
+        width: 10px;
+        height: 10px;
+        rotate: 45deg;
+        border-top: 1px solid var(--line);
+        border-left: 1px solid var(--line);
+        background: #1d2026;
+        content: "";
+      }
+
+      .export-popover-title {
+        margin: 0 0 12px;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .export-row {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .export-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .export-popover .button {
+        width: 100%;
+      }
+
+      .export-row-label {
+        color: var(--muted-2);
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .export-size-info {
+        min-height: 16px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
       }
 
       .export-toggle {
         display: inline-flex;
         align-items: center;
+        justify-content: space-between;
         gap: 8px;
-        color: var(--muted);
-        font-size: 11px;
+        color: #cbd0d8;
+        font-size: 12px;
         white-space: nowrap;
       }
 
@@ -653,43 +705,53 @@
       }
 
       .control-group {
-        padding: 16px 18px 18px;
-        border-bottom: 1px solid var(--line-soft);
+        margin: 12px 12px 0;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        padding: 14px;
+        background: rgb(255 255 255 / 2.5%);
       }
 
       .control-group:last-child {
-        border-bottom: 0;
+        margin-bottom: 12px;
       }
 
       .control-group-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
         margin: 0 0 16px;
         color: #f1f3f6;
         font-size: 13px;
+        font-weight: 780;
         letter-spacing: -0.02em;
       }
 
-      summary.control-group-title {
-        cursor: pointer;
-        list-style: none;
-        margin-bottom: 0;
+      .control-group-title::before {
+        width: 6px;
+        height: 18px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--accent);
+        content: "";
       }
 
-      summary.control-group-title::-webkit-details-marker {
-        display: none;
+      .control-group-title-text {
+        min-width: 0;
+        flex: 1;
       }
 
-      summary.control-group-title::after {
-        float: right;
+      .control-group-hint {
+        margin: -9px 0 14px 16px;
         color: var(--muted-2);
-        content: "+";
+        font-size: 10px;
+        line-height: 1.5;
       }
 
-      .advanced-group[open] summary.control-group-title {
-        margin-bottom: 16px;
-      }
-
-      .advanced-group[open] summary.control-group-title::after {
-        content: "−";
+      .advanced-group {
+        border-color: #3a404b;
+        background: rgb(240 90 138 / 3.5%);
       }
 
       .scale-options {
@@ -713,6 +775,30 @@
         background: rgb(240 90 138 / 16%);
       }
 
+      .segmented-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+      }
+
+      .segmented-option {
+        min-height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 7px 8px;
+        background: var(--panel-2);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .segmented-option:hover,
+      .segmented-option.is-active {
+        border-color: var(--accent);
+        background: rgb(240 90 138 / 16%);
+        color: var(--text);
+      }
+
       .two-col {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -727,16 +813,11 @@
         .app-shell {
           height: auto;
           min-height: 100vh;
-          grid-template-rows: auto auto auto;
+          grid-template-rows: auto auto;
         }
 
-        .topbar,
-        .footerbar {
+        .topbar {
           min-height: 64px;
-        }
-
-        .topbar-note {
-          display: none;
         }
 
         .workspace {
@@ -763,22 +844,44 @@
         <div class="brand">
           <span class="brand-mark" aria-hidden="true"></span>
           <div>
-            <strong>Halftone Studio</strong>
+            <strong>Dotforge</strong>
             <span>生成艺术图像编辑器，本地 Canvas 处理，不上传图片。</span>
           </div>
         </div>
-        <div class="topbar-note">当前效果：半调 Halftone</div>
+        <div class="export-actions">
+          <label class="export-toggle">
+            <input id="transparentExport" type="checkbox" />
+            <span>透明背景</span>
+          </label>
+          <button class="button button-primary" id="exportMenuButton" type="button" aria-expanded="false">
+            导出
+          </button>
+          <div class="export-popover" id="exportPopover" hidden>
+            <p class="export-popover-title">导出 PNG</p>
+            <div class="export-row">
+              <span class="export-row-label">尺寸</span>
+              <div class="scale-options" id="exportScaleOptions"></div>
+              <div class="export-size-info" id="exportSizeInfo">等待图片</div>
+            </div>
+            <button class="button button-primary" id="exportButton" type="button" disabled>
+              导出 PNG
+            </button>
+          </div>
+        </div>
       </header>
 
       <main class="workspace">
         <aside class="left-panel" aria-label="项目设置">
           <section class="panel-block">
-            <div class="panel-kicker">图片来源</div>
-            <label class="upload-zone" for="fileInput">
-              <span class="button button-primary">上传图片 / GIF / MP4</span>
+            <div class="panel-kicker">当前图片</div>
+            <div class="asset-summary">
+              <div>
+                <div class="asset-name" id="assetName">未选择图片</div>
+                <p class="helper-text" id="imageMeta">在画布中选择或拖拽图片</p>
+              </div>
+              <label class="button button-secondary asset-action" id="assetAction" for="fileInput">选择图片</label>
               <input id="fileInput" type="file" accept="image/*,video/mp4,video/*" />
-              <p class="helper-text" id="imageMeta">点击或拖拽文件到画布区域</p>
-            </label>
+            </div>
           </section>
 
           <section class="panel-block">
@@ -835,18 +938,6 @@
         </aside>
       </main>
 
-      <footer class="footerbar">
-        <small id="exportHint">导出会使用当前网屏参数和当前预览帧。</small>
-        <div class="export-actions">
-          <label class="export-toggle">
-            <input id="transparentExport" type="checkbox" />
-            <span>透明背景</span>
-          </label>
-          <button class="button button-primary" id="exportButton" type="button" disabled>
-            导出高清 PNG
-          </button>
-        </div>
-      </footer>
     </div>
 
     <script>
@@ -927,49 +1018,47 @@
           },
           {
             id: "colorMode",
-            label: "Color Mode 色彩模式",
-            type: "select",
+            label: "Print Mode 印刷模式",
+            type: "segmented",
             options: [
-              { value: "cmyk", label: "CMYK Process 四色印刷" },
+              { value: "cmyk", label: "CMYK 四色印刷" },
               { value: "single", label: "Single Ink 单色油墨" },
             ],
-            group: "Ink 油墨控制",
+            group: "Basic 基础",
           },
-          { id: "screenDensity", label: "Screen Density 网点密度", type: "range", min: 0, max: 100, step: 1, group: "Screen 网屏控制" },
-          { id: "screenAngle", label: "Screen Angle 网点角度", type: "range", min: -90, max: 90, step: 1, group: "Screen 网屏控制" },
-          { id: "dotCoverage", label: "Dot Coverage 网点覆盖率", type: "range", min: 0.05, max: 1.4, step: 0.01, group: "Screen 网屏控制" },
-          { id: "detail", label: "Detail 细节保留", type: "range", min: 5, max: 100, step: 1, group: "Screen 网屏控制" },
+          { id: "screenDensity", label: "Screen Density 网点密度", type: "range", min: 0, max: 100, step: 1, group: "Basic 基础" },
+          { id: "screenAngle", label: "Screen Angle 网点角度", type: "range", min: -90, max: 90, step: 1, group: "Basic 基础" },
+          { id: "dotCoverage", label: "Dot Coverage 网点覆盖率", type: "range", min: 0.05, max: 1.4, step: 0.01, group: "Basic 基础" },
           {
             id: "singleInkColors",
             label: "Colors 颜色",
             type: "colorPair",
-            group: "Ink 油墨控制",
+            group: "Basic 基础",
             colors: [
               { id: "inkColor", label: "前景" },
               { id: "backgroundColor", label: "背景" },
             ],
             showWhen: { id: "colorMode", value: "single" },
           },
-          { id: "inkStrength", label: "Ink Strength 油墨强度", type: "range", min: 10, max: 140, step: 1, group: "Ink 油墨控制" },
-          { id: "blackKeyStrength", label: "Black Key Strength 黑版强度", type: "range", min: 40, max: 180, step: 1, group: "Ink 油墨控制", showWhen: { id: "colorMode", value: "cmyk" } },
-          { id: "inkSpread", label: "Ink Spread 油墨扩散", type: "range", min: 0, max: 1, step: 0.01, group: "Ink 油墨控制" },
-          { id: "inkBleed", label: "Ink Bleed 油墨晕染", type: "range", min: 0, max: 90, step: 1, group: "Ink 油墨控制" },
-          { id: "inkRoughness", label: "Ink Roughness 边缘粗糙", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
-          { id: "inkGrain", label: "Ink Grain 油墨颗粒", type: "range", min: 0, max: 100, step: 1, group: "Ink 油墨控制" },
-          { id: "cmykShift", label: "CMYK Shift 油墨偏色", hint: "分离青、品红、黄、黑四个油墨通道", type: "checkbox", group: "Color Shift 偏色控制", showWhen: { id: "colorMode", value: "cmyk" } },
-          { id: "registrationOffset", label: "Registration Offset 套印错位", type: "range", min: 0, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
-          { id: "cyanOffset", label: "Cyan Offset 青版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
-          { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
-          { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
-          { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Color Shift 偏色控制", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
-          { id: "backgroundColor", label: "Background Color 背景颜色", type: "color", group: "Background 背景", showWhen: { id: "colorMode", value: "cmyk" } },
+          { id: "backgroundColor", label: "Background Color 背景颜色", type: "color", group: "Basic 基础", showWhen: { id: "colorMode", value: "cmyk" } },
+          { id: "inkStrength", label: "Ink Strength 油墨强度", type: "range", min: 10, max: 140, step: 1, group: "Basic 基础" },
+          { id: "detail", label: "Detail 细节保留", type: "range", min: 5, max: 100, step: 1, group: "Texture 质感" },
+          { id: "inkSpread", label: "Ink Spread 油墨扩散", type: "range", min: 0, max: 1, step: 0.01, group: "Texture 质感" },
+          { id: "inkBleed", label: "Ink Bleed 油墨晕染", type: "range", min: 0, max: 90, step: 1, group: "Texture 质感" },
+          { id: "inkRoughness", label: "Ink Roughness 边缘粗糙", type: "range", min: 0, max: 100, step: 1, group: "Texture 质感" },
+          { id: "inkGrain", label: "Ink Grain 油墨颗粒", type: "range", min: 0, max: 100, step: 1, group: "Texture 质感" },
+          { id: "blackKeyStrength", label: "Black Key Strength 黑版强度", type: "range", min: 40, max: 180, step: 1, group: "Advanced CMYK 高级分色", showWhen: { id: "colorMode", value: "cmyk" } },
+          { id: "cmykShift", label: "CMYK Shift 油墨偏色", hint: "分离青、品红、黄、黑四个油墨通道", type: "checkbox", group: "Advanced CMYK 高级分色", showWhen: { id: "colorMode", value: "cmyk" } },
+          { id: "registrationOffset", label: "Registration Offset 套印错位", type: "range", min: 0, max: 8, step: 0.5, group: "Advanced CMYK 高级分色", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "cyanOffset", label: "Cyan Offset 青版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Advanced CMYK 高级分色", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "magentaOffset", label: "Magenta Offset 品红偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Advanced CMYK 高级分色", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "yellowOffset", label: "Yellow Offset 黄版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Advanced CMYK 高级分色", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
+          { id: "blackOffset", label: "Black Offset 黑版偏移", type: "range", min: -8, max: 8, step: 0.5, group: "Advanced CMYK 高级分色", showWhen: [{ id: "colorMode", value: "cmyk" }, { id: "cmykShift", value: true }] },
         ],
         render(ctx, image, params, canvas, options = {}) {
           const width = canvas.width;
           const height = canvas.height;
-          resizeCanvasIfNeeded(renderSampleCanvas, width, height);
-          renderSampleCtx.drawImage(image, 0, 0, width, height);
-          const pixels = renderSampleCtx.getImageData(0, 0, width, height).data;
+          const pixels = options.sourcePixels || getSourcePixels(image, width, height);
 
           ctx.clearRect(0, 0, width, height);
           if (!options.transparentBackground) {
@@ -1005,6 +1094,12 @@
           y: (1 - bn - k) / (1 - k),
           k,
         };
+      }
+
+      function getSourcePixels(image, width, height) {
+        resizeCanvasIfNeeded(renderSampleCanvas, width, height);
+        renderSampleCtx.drawImage(image, 0, 0, width, height);
+        return renderSampleCtx.getImageData(0, 0, width, height).data;
       }
 
       // GCR (Gray Component Replacement / 灰成分替换)
@@ -1337,12 +1432,17 @@
         canvasStage: document.querySelector("#canvasStage"),
         canvas: document.querySelector("#previewCanvas"),
         emptyState: document.querySelector("#emptyState"),
+        assetName: document.querySelector("#assetName"),
+        assetAction: document.querySelector("#assetAction"),
         imageMeta: document.querySelector("#imageMeta"),
         previewInfo: document.querySelector("#previewInfo"),
         mediaMode: document.querySelector("#mediaMode"),
         canvasSize: document.querySelector("#canvasSize"),
+        exportMenuButton: document.querySelector("#exportMenuButton"),
+        exportPopover: document.querySelector("#exportPopover"),
         exportButton: document.querySelector("#exportButton"),
-        exportHint: document.querySelector("#exportHint"),
+        exportScaleOptions: document.querySelector("#exportScaleOptions"),
+        exportSizeInfo: document.querySelector("#exportSizeInfo"),
         transparentExport: document.querySelector("#transparentExport"),
       };
 
@@ -1360,6 +1460,8 @@
         mediaLoop: null,
         renderFrame: null,
         lastAnimatedRenderAt: 0,
+        exportScale: 1,
+        previewPixelCache: null,
       };
 
       /* =========================================================
@@ -1439,16 +1541,21 @@
           });
 
         groups.forEach((controls, groupName) => {
-          if (groupName === "Advanced") {
-            const details = document.createElement("details");
-            details.className = "control-group advanced-group";
-            details.innerHTML = `<summary class="control-group-title">Advanced 高级设置</summary>`;
-            controls.forEach((control) => details.append(createControl(control, params, effect)));
-            dom.controlsPanel.append(details);
+          if (groupName.startsWith("Advanced")) {
+            const group = document.createElement("section");
+            group.className = "control-group advanced-group";
+            group.innerHTML = `
+              <h3 class="control-group-title">
+                <span class="control-group-title-text">${groupName}</span>
+              </h3>
+              <p class="control-group-hint">CMYK 套印、偏移和黑版参数。</p>
+            `;
+            controls.forEach((control) => group.append(createControl(control, params, effect)));
+            dom.controlsPanel.append(group);
           } else {
             const group = document.createElement("section");
             group.className = "control-group";
-            group.innerHTML = `<h3 class="control-group-title">${groupName}</h3>`;
+            group.innerHTML = `<h3 class="control-group-title"><span class="control-group-title-text">${groupName}</span></h3>`;
             controls.forEach((control) => group.append(createControl(control, params, effect)));
             dom.controlsPanel.append(group);
           }
@@ -1475,6 +1582,7 @@
       function createControl(control, params, effect) {
         if (control.type === "checkbox") return createCheckboxControl(control, params);
         if (control.type === "scale") return createScaleControl(control, params, effect);
+        if (control.type === "segmented") return createSegmentedControl(control, params);
         if (control.type === "colorPair") return createColorPairControl(control, params);
 
         const label = document.createElement("label");
@@ -1526,6 +1634,32 @@
         }
 
         return label;
+      }
+
+      function createSegmentedControl(control, params) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "control";
+        wrapper.innerHTML = `<span class="control-header"><span>${control.label}</span></span>`;
+
+        const options = document.createElement("div");
+        options.className = "segmented-options";
+
+        control.options.forEach((optionData) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `segmented-option ${params[control.id] === optionData.value ? "is-active" : ""}`;
+          button.textContent = optionData.label;
+          button.addEventListener("click", () => {
+            if (params[control.id] === optionData.value) return;
+            params[control.id] = optionData.value;
+            renderEffectUI();
+            scheduleRender();
+          });
+          options.append(button);
+        });
+
+        wrapper.append(options);
+        return wrapper;
       }
 
       function createColorPairControl(control, params) {
@@ -1646,6 +1780,61 @@
         return label;
       }
 
+      function setExportPopoverOpen(isOpen) {
+        dom.exportPopover.hidden = !isOpen;
+        dom.exportMenuButton.setAttribute("aria-expanded", String(isOpen));
+      }
+
+      function renderExportScaleOptions() {
+        dom.exportScaleOptions.innerHTML = "";
+        [1, 2, 3].forEach((scale) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = `scale-option ${state.exportScale === scale ? "is-active" : ""}`;
+          button.textContent = `${scale}x`;
+          button.addEventListener("click", () => {
+            state.exportScale = scale;
+            renderExportScaleOptions();
+            updateExportSizeInfo();
+          });
+          dom.exportScaleOptions.append(button);
+        });
+      }
+
+      function updateExportSizeInfo() {
+        if (!state.sourceImage) {
+          dom.exportSizeInfo.textContent = "等待图片";
+          return;
+        }
+
+        const width = Math.round(sourceCanvas.width * state.exportScale);
+        const height = Math.round(sourceCanvas.height * state.exportScale);
+        dom.exportSizeInfo.textContent = `导出尺寸 ${width} × ${height} px`;
+      }
+
+      function getPreviewSourcePixels(previewSize) {
+        const cache = state.previewPixelCache;
+        const sourceId = state.mediaUrl || state.sourceKind;
+
+        if (
+          cache &&
+          cache.sourceId === sourceId &&
+          cache.width === previewSize.width &&
+          cache.height === previewSize.height
+        ) {
+          return cache.pixels;
+        }
+
+        const pixels = getSourcePixels(state.sourceImage, previewSize.width, previewSize.height);
+        state.previewPixelCache = {
+          sourceId,
+          width: previewSize.width,
+          height: previewSize.height,
+          pixels,
+        };
+        return pixels;
+      }
+
       /* =========================================================
          06. Media Loading and Rendering
       ========================================================= */
@@ -1665,20 +1854,26 @@
           URL.revokeObjectURL(state.mediaUrl);
           state.mediaUrl = "";
         }
+
+        state.previewPixelCache = null;
       }
 
       function setSource(media, width, height, file, kind) {
         resizeCanvasIfNeeded(sourceCanvas, width, height);
         state.sourceImage = media;
         state.sourceKind = kind;
+        state.previewPixelCache = null;
 
         dom.canvas.style.display = "block";
         dom.emptyState.hidden = true;
         dom.exportButton.disabled = false;
-        dom.imageMeta.textContent = `${file.name} · ${kind} · ${width} × ${height}px`;
-        dom.previewInfo.textContent = `${width} × ${height}px · 适应窗口`;
+        dom.assetAction.textContent = "更换图片";
+        dom.assetName.textContent = file.name;
+        dom.imageMeta.textContent = kind;
+        dom.previewInfo.textContent = `原图 ${width} × ${height}px · 适应窗口`;
         dom.mediaMode.textContent = kind === "MP4" || kind === "GIF" ? `动态预览 · ${kind}` : "静态图像";
-        dom.canvasSize.textContent = `${width} × ${height}`;
+        dom.canvasSize.textContent = `原图 ${width} × ${height}`;
+        updateExportSizeInfo();
         scheduleRender();
       }
 
@@ -1805,9 +2000,11 @@
         const effect = getActiveEffect();
         const params = getActiveParams();
         const previewSize = getPreviewDimensions();
+        const sourcePixels = state.sourceKind === "图片" ? getPreviewSourcePixels(previewSize) : null;
         resizeCanvasIfNeeded(dom.canvas, previewSize.width, previewSize.height);
-        dom.previewInfo.textContent = `${sourceCanvas.width} × ${sourceCanvas.height}px · 预览 ${previewSize.width} × ${previewSize.height}px`;
+        dom.previewInfo.textContent = `预览 ${previewSize.width} × ${previewSize.height}px`;
         effect.render(previewCtx, state.sourceImage, params, dom.canvas, {
+          sourcePixels,
           transparentBackground: dom.transparentExport.checked,
         });
       }
@@ -1818,7 +2015,7 @@
 
         const effect = getActiveEffect();
         const params = getActiveParams();
-        const scale = 1;
+        const scale = state.exportScale;
         const exportCanvas = document.createElement("canvas");
         const exportCtx = exportCanvas.getContext("2d", { willReadFrequently: true });
 
@@ -1833,7 +2030,7 @@
 
         exportCanvas.toBlob((blob) => {
           dom.exportButton.disabled = false;
-          dom.exportButton.textContent = "导出高清 PNG";
+          dom.exportButton.textContent = "导出 PNG";
 
           if (!blob) {
             alert("导出失败，请再试一次。");
@@ -1842,7 +2039,8 @@
 
           const link = document.createElement("a");
           const objectUrl = URL.createObjectURL(blob);
-          link.download = `${effect.id}-export.png`;
+          const backgroundLabel = dom.transparentExport.checked ? "transparent" : "background";
+          link.download = `${effect.id}-${scale}x-${backgroundLabel}.png`;
           link.href = objectUrl;
           link.click();
           setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
@@ -1879,11 +2077,23 @@
       document.addEventListener("dragover", preventDefaultDrag);
       document.addEventListener("drop", preventDefaultDrag);
 
+      dom.exportMenuButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        setExportPopoverOpen(dom.exportPopover.hidden);
+      });
+      dom.exportPopover.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+      document.addEventListener("click", () => {
+        setExportPopoverOpen(false);
+      });
       dom.exportButton.addEventListener("click", exportPng);
       dom.transparentExport.addEventListener("change", scheduleRender);
 
       initEffectSelect();
       renderEffectUI();
+      renderExportScaleOptions();
+      updateExportSizeInfo();
     </script>
   </body>
 </html>

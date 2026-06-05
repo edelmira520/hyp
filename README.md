@@ -1,4 +1,4 @@
-# Dot Studio
+# Dotforge
 
 一个无需后端的本地 Halftone 图片风格化工具。图片处理完全在浏览器内完成。
 
