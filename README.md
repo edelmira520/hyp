@@ -1,6 +1,10 @@
 # Dotforge
 
-一个无需后端的本地 Halftone 图片风格化工具。图片处理完全在浏览器内完成。
+Dotforge 是一个无需后端的本地 Halftone 图片风格化工具。图片处理完全在浏览器内完成，不上传图片。
+
+当前主应用入口是 `index.html`。它是这个项目目前的 source of truth，包含页面结构、样式和浏览器端 Canvas 图像处理逻辑。
+
+项目仍保持单文件本地浏览器工具架构：不需要 React、Vue、构建工具或后端服务。
 
 ## 文件结构
 
@@ -9,8 +13,17 @@
 ├── index.html
 ├── styles.css
 ├── app.js
+├── .gitignore
 └── README.md
 ```
+
+## 当前文件说明
+
+- `index.html`：当前主应用入口，也是主要源码文件。
+- `app.js`：当前为 legacy/unused 或预留文件，暂时保留。
+- `styles.css`：当前为 legacy/unused 或预留文件，暂时保留。
+
+除非明确确认，不要删除 `app.js` 或 `styles.css`。
 
 ## 运行方式
 
